@@ -25,6 +25,13 @@ buy2go:
     jwtRefreshExpirationMs: 604800000 # 7 days
     uploadDir: static/uploads
 
+minio:
+  url: ${MINIO_URL:https://data.planifier.app}
+  access-key: ${MINIO_ACCESS_KEY:admin}
+  secret-key: ${MINIO_SECRET_KEY:EagleMount__2026}
+  bucket: ${MINIO_BUCKET:enggis}
+  source-folder: ${MINIO_SOURCE_FOLDER:buy2go/}
+
 springdoc:
   api-docs:
     path: /v3/api-docs
