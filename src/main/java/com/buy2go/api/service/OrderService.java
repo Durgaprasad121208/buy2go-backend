@@ -10,12 +10,15 @@ import com.buy2go.api.enums.OrderStatus;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
+import java.util.List;
 
 public interface OrderService {
     OrderResponseDTO createOrder(OrderRequestDTO request);
+    List<OrderResponseDTO> createBulkOrders(List<OrderRequestDTO> requests);
     PagedResponse<OrderResponseDTO> getAllOrders(int page, int size, OrderStatus status, String search);
     OrderResponseDTO getOrderById(String id);
     OrderResponseDTO getOrderByOrderNumber(String orderNumber);
+    List<OrderResponseDTO> getOrdersByCustomer(String email, String phone);
     OrderResponseDTO updateOrderStatus(String id, OrderStatusUpdateDTO request, String username);
     OrderResponseDTO updateShipmentDetails(String id, ShipmentUpdateDTO request);
     OrderResponseDTO cancelOrder(String id, String remarks, String username);
@@ -29,4 +32,5 @@ public interface OrderService {
     OrderResponseDTO updateItemPhoto(String orderId, String itemId, String photoUrl);
     OrderResponseDTO removeItemPhoto(String orderId, String itemId);
     OrderResponseDTO updateOrderPhoto(String orderId, String photoUrl);
+    OrderResponseDTO removeOrderPhoto(String orderId);
 }

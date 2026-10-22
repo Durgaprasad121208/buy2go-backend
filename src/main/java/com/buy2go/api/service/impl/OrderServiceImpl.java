@@ -261,6 +261,51 @@ public class OrderServiceImpl implements OrderService {
         return ModelMapper.toOrderResponse(doc);
     }
 
+    @Override
+    public List<OrderResponseDTO> createBulkOrders(List<OrderRequestDTO> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<OrderResponseDTO> results = new ArrayList<>();
+        for (OrderRequestDTO req : requests) {
+            results.add(createOrder(req));
+        }
+        return results;
+    }
+
+    @Override
+    public List<OrderResponseDTO> getOrdersByCustomer(String email, String phone) {
+        List<OrderEntity> orders;
+        if (email != null && !email.trim().isEmpty() && phone != null && !phone.trim().isEmpty()) {
+            orders = orderRepository.findByCustomerIdentifier(email.trim());
+            List<OrderEntity> phoneOrders = orderRepository.findByCustomerPhone(phone.trim());
+            for (OrderEntity po : phoneOrders) {
+                if (orders.stream().noneMatch(o -> o.getId().equals(po.getId()))) {
+                    orders.add(po);
+                }
+            }
+        } else if (email != null && !email.trim().isEmpty()) {
+            orders = orderRepository.findByCustomerEmail(email.trim());
+        } else if (phone != null && !phone.trim().isEmpty()) {
+            orders = orderRepository.findByCustomerPhone(phone.trim());
+        } else {
+            return Collections.emptyList();
+        }
+
+        return orders.stream()
+                .map(ModelMapper::toOrderResponse)
+                .toList();
+    }
+
+    @Override
+    public OrderResponseDTO removeOrderPhoto(String orderId) {
+        OrderEntity doc = findOrder(orderId);
+        doc.setPhoto(null);
+        doc.setUpdatedAt(Instant.now());
+        doc = orderRepository.save(doc);
+        return ModelMapper.toOrderResponse(doc);
+    }
+
     private OrderEntity findOrder(String idOrOrderNumber) {
         return orderRepository.findByIdAndIsDeletedFalse(idOrOrderNumber)
                 .or(() -> orderRepository.findByOrderNumberAndIsDeletedFalse(idOrOrderNumber))

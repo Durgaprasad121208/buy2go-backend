@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -48,6 +49,31 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderResponseDTO>> createOrder(@RequestBody OrderRequestDTO request) {
         OrderResponseDTO response = orderService.createOrder(request);
         return ResponseEntity.ok(ApiResponse.success("Order placed successfully", response));
+    }
+
+    @PostMapping("/bulk-create")
+    @Operation(summary = "Place multiple customer orders in a single request (bulk ordering)")
+    public ResponseEntity<ApiResponse<List<OrderResponseDTO>>> createBulkOrders(@RequestBody List<OrderRequestDTO> requests) {
+        List<OrderResponseDTO> response = orderService.createBulkOrders(requests);
+        return ResponseEntity.ok(ApiResponse.success("Bulk orders placed successfully", response));
+    }
+
+    @GetMapping("/customer")
+    @Operation(summary = "Get all orders for a customer by email or phone number")
+    public ResponseEntity<ApiResponse<List<OrderResponseDTO>>> getOrdersByCustomer(
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String phone) {
+        List<OrderResponseDTO> response = orderService.getOrdersByCustomer(email, phone);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/my-orders")
+    @Operation(summary = "Get all orders for the currently authenticated customer")
+    public ResponseEntity<ApiResponse<List<OrderResponseDTO>>> getMyOrders(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String email = userDetails != null ? userDetails.getUsername() : null;
+        List<OrderResponseDTO> response = orderService.getOrdersByCustomer(email, null);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PutMapping("/{id}/items/{itemId}/customization")
@@ -86,6 +112,13 @@ public class OrderController {
             @RequestParam String photoUrl) {
         OrderResponseDTO response = orderService.updateOrderPhoto(id, photoUrl);
         return ResponseEntity.ok(ApiResponse.success("Order photo updated successfully", response));
+    }
+
+    @DeleteMapping("/{id}/photo")
+    @Operation(summary = "Remove order-level photo")
+    public ResponseEntity<ApiResponse<OrderResponseDTO>> removeOrderPhoto(@PathVariable String id) {
+        OrderResponseDTO response = orderService.removeOrderPhoto(id);
+        return ResponseEntity.ok(ApiResponse.success("Order photo removed successfully", response));
     }
 
     @GetMapping

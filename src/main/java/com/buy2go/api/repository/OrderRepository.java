@@ -33,4 +33,13 @@ public interface OrderRepository extends MongoRepository<OrderEntity, String> {
     List<OrderEntity> findTop5ByIsDeletedFalseOrderByCreatedAtDesc();
 
     List<OrderEntity> findByCreatedAtBetweenAndIsDeletedFalse(Instant start, Instant end);
+
+    @Query("{ 'isDeleted': false, $or: [ { 'customer.email': ?0 }, { 'customer.phone': ?0 } ] }")
+    List<OrderEntity> findByCustomerIdentifier(String identifier);
+
+    @Query("{ 'isDeleted': false, 'customer.email': ?0 }")
+    List<OrderEntity> findByCustomerEmail(String email);
+
+    @Query("{ 'isDeleted': false, 'customer.phone': ?0 }")
+    List<OrderEntity> findByCustomerPhone(String phone);
 }
