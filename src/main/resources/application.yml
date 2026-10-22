@@ -1,0 +1,34 @@
+server:
+  port: 8188
+  servlet:
+    context-path: /v1.0/buy2go-service
+
+spring:
+  application:
+    name: buy2go-service
+  data:
+    mongodb:
+      uri: mongodb://127.0.0.1:27017/buy2go_db
+      auto-index-creation: true
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  threads:
+    virtual:
+      enabled: true
+
+buy2go:
+  app:
+    jwtSecret: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
+    jwtExpirationMs: 86400000        # 24 hours
+    jwtRefreshExpirationMs: 604800000 # 7 days
+    uploadDir: static/uploads
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
