@@ -26,6 +26,7 @@ public class OrderResponseDTO {
 
     private OrderEntity.CustomerDetail customer;
     private List<OrderEntity.OrderItemDetail> items;
+    private List<String> additionalPhotos;
     private OrderEntity.ShipmentDetail shipment;
     private List<OrderEntity.OrderStatusHistory> statusHistory;
 

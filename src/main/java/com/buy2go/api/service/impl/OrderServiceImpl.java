@@ -2,14 +2,17 @@ package com.buy2go.api.service.impl;
 
 import com.buy2go.api.entity.OrderEntity;
 import com.buy2go.api.dto.PagedResponse;
+import com.buy2go.api.dto.request.ItemCustomizationDTO;
 import com.buy2go.api.dto.request.OrderRequestDTO;
 import com.buy2go.api.dto.request.OrderStatusUpdateDTO;
 import com.buy2go.api.dto.request.ShipmentUpdateDTO;
 import com.buy2go.api.dto.response.OrderResponseDTO;
 import com.buy2go.api.enums.OrderStatus;
 import com.buy2go.api.exception.ResourceNotFoundException;
+import com.buy2go.api.exception.SystemException;
 import com.buy2go.api.mapper.ModelMapper;
 import com.buy2go.api.repository.OrderRepository;
+import com.buy2go.api.service.FileStorageService;
 import com.buy2go.api.service.OrderService;
 import com.buy2go.api.utils.DateUtil;
 import com.buy2go.api.utils.OrderNumberGenerator;
@@ -21,12 +24,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -34,6 +39,7 @@ import java.util.List;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
+    private final FileStorageService fileStorageService;
 
     @Override
     public OrderResponseDTO createOrder(OrderRequestDTO request) {
@@ -42,7 +48,17 @@ public class OrderServiceImpl implements OrderService {
         doc.setCustomer(request.getCustomer());
         doc.setCustomerName(request.getCustomer() != null ? request.getCustomer().getName() : "Customer");
         doc.setLocation(request.getLocation() != null ? request.getLocation() : (request.getCustomer() != null ? request.getCustomer().getAddress() : ""));
-        doc.setItems(request.getItems() != null ? request.getItems() : new ArrayList<>());
+
+        List<OrderEntity.OrderItemDetail> items = request.getItems() != null ? request.getItems() : new ArrayList<>();
+        int itemIndex = 1;
+        for (OrderEntity.OrderItemDetail item : items) {
+            if (item.getId() == null || item.getId().trim().isEmpty()) {
+                item.setId("item-" + itemIndex++);
+            }
+        }
+        doc.setItems(items);
+        doc.setAdditionalPhotos(request.getAdditionalPhotos() != null ? request.getAdditionalPhotos() : new ArrayList<>());
+
         doc.setItemCount(doc.getItems().stream().mapToInt(OrderEntity.OrderItemDetail::getQuantity).sum());
         doc.setTotalAmount(request.getTotalAmount());
         doc.setStatus(OrderStatus.New);
@@ -100,23 +116,19 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderResponseDTO getOrderById(String id) {
-        OrderEntity doc = orderRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + id));
+        OrderEntity doc = findOrder(id);
         return ModelMapper.toOrderResponse(doc);
     }
 
     @Override
     public OrderResponseDTO getOrderByOrderNumber(String orderNumber) {
-        OrderEntity doc = orderRepository.findByOrderNumberAndIsDeletedFalse(orderNumber)
-                .or(() -> orderRepository.findByIdAndIsDeletedFalse(orderNumber))
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with order number / ID: " + orderNumber));
+        OrderEntity doc = findOrder(orderNumber);
         return ModelMapper.toOrderResponse(doc);
     }
 
     @Override
     public OrderResponseDTO updateOrderStatus(String id, OrderStatusUpdateDTO request, String username) {
-        OrderEntity doc = orderRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + id));
+        OrderEntity doc = findOrder(id);
 
         OrderStatus oldStatus = doc.getStatus();
         OrderStatus newStatus = request.getStatus();
@@ -142,8 +154,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderResponseDTO updateShipmentDetails(String id, ShipmentUpdateDTO request) {
-        OrderEntity doc = orderRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + id));
+        OrderEntity doc = findOrder(id);
 
         OrderEntity.ShipmentDetail shipment = doc.getShipment();
         if (shipment == null) {
@@ -168,6 +179,102 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponseDTO cancelOrder(String id, String remarks, String username) {
         OrderStatusUpdateDTO updateDTO = new OrderStatusUpdateDTO(OrderStatus.Cancelled, remarks != null ? remarks : "Order cancelled");
         return updateOrderStatus(id, updateDTO, username);
+    }
+
+    @Override
+    public List<String> uploadOrderPhotos(MultipartFile[] files) {
+        if (files == null || files.length == 0) {
+            return Collections.emptyList();
+        }
+        List<String> urls = new ArrayList<>();
+        for (MultipartFile file : files) {
+            if (file != null && !file.isEmpty()) {
+                urls.add(fileStorageService.storeFile(file, "orders/photos"));
+            }
+        }
+        return urls;
+    }
+
+    @Override
+    public String uploadOrderPhoto(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new SystemException("Uploaded file cannot be empty");
+        }
+        return fileStorageService.storeFile(file, "orders/photos");
+    }
+
+    @Override
+    public OrderResponseDTO updateItemCustomization(String orderId, String itemId, ItemCustomizationDTO customization) {
+        OrderEntity doc = findOrder(orderId);
+
+        OrderEntity.OrderItemDetail targetItem = doc.getItems().stream()
+                .filter(i -> itemId.equalsIgnoreCase(i.getId()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found in order with ID: " + itemId));
+
+        if (customization.getVariant() != null) targetItem.setVariant(customization.getVariant());
+        if (customization.getColor() != null) targetItem.setColor(customization.getColor());
+        if (customization.getTextToPrint() != null) targetItem.setTextToPrint(customization.getTextToPrint());
+        if (customization.getPhotos() != null) targetItem.setPhotos(new ArrayList<>(customization.getPhotos()));
+        if (customization.getPrintNotes() != null) targetItem.setPrintNotes(customization.getPrintNotes());
+
+        doc.setUpdatedAt(Instant.now());
+        doc = orderRepository.save(doc);
+        return ModelMapper.toOrderResponse(doc);
+    }
+
+    @Override
+    public OrderResponseDTO addItemPhotos(String orderId, String itemId, List<String> photoUrls) {
+        OrderEntity doc = findOrder(orderId);
+
+        OrderEntity.OrderItemDetail targetItem = doc.getItems().stream()
+                .filter(i -> itemId.equalsIgnoreCase(i.getId()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found in order with ID: " + itemId));
+
+        if (photoUrls != null && !photoUrls.isEmpty()) {
+            if (targetItem.getPhotos() == null) {
+                targetItem.setPhotos(new ArrayList<>());
+            }
+            targetItem.getPhotos().addAll(photoUrls);
+        }
+
+        doc.setUpdatedAt(Instant.now());
+        doc = orderRepository.save(doc);
+        return ModelMapper.toOrderResponse(doc);
+    }
+
+    @Override
+    public OrderResponseDTO removeItemPhoto(String orderId, String itemId, String photoUrl) {
+        OrderEntity doc = findOrder(orderId);
+
+        OrderEntity.OrderItemDetail targetItem = doc.getItems().stream()
+                .filter(i -> itemId.equalsIgnoreCase(i.getId()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found in order with ID: " + itemId));
+
+        if (targetItem.getPhotos() != null && photoUrl != null) {
+            targetItem.getPhotos().remove(photoUrl.trim());
+        }
+
+        doc.setUpdatedAt(Instant.now());
+        doc = orderRepository.save(doc);
+        return ModelMapper.toOrderResponse(doc);
+    }
+
+    @Override
+    public OrderResponseDTO updateOrderAdditionalPhotos(String orderId, List<String> additionalPhotos) {
+        OrderEntity doc = findOrder(orderId);
+        doc.setAdditionalPhotos(additionalPhotos != null ? new ArrayList<>(additionalPhotos) : new ArrayList<>());
+        doc.setUpdatedAt(Instant.now());
+        doc = orderRepository.save(doc);
+        return ModelMapper.toOrderResponse(doc);
+    }
+
+    private OrderEntity findOrder(String idOrOrderNumber) {
+        return orderRepository.findByIdAndIsDeletedFalse(idOrOrderNumber)
+                .or(() -> orderRepository.findByOrderNumberAndIsDeletedFalse(idOrOrderNumber))
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID/number: " + idOrOrderNumber));
     }
 
     @Override
@@ -205,7 +312,7 @@ public class OrderServiceImpl implements OrderService {
 
                 row.createCell(0).setCellValue(o.getOrderNumber());
                 row.createCell(1).setCellValue(o.getCustomerName() != null ? o.getCustomerName() : "");
-                row.createCell(2).setCellValue(o.getCustomer() != null ? o.getCustomer().getPhone() : "");
+                row.createCell(2).setCellValue(o.getCustomer() != null && o.getCustomer().getPhone() != null ? o.getCustomer().getPhone() : "");
                 row.createCell(3).setCellValue(o.getStatus() != null ? o.getStatus().name() : "");
                 row.createCell(4).setCellValue(o.getItemCount());
                 row.createCell(5).setCellValue(o.getTotalAmount());

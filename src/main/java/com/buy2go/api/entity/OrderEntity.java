@@ -37,6 +37,7 @@ public class OrderEntity extends BaseEntity {
 
     private CustomerDetail customer;
     private List<OrderItemDetail> items = new ArrayList<>();
+    private List<String> additionalPhotos = new ArrayList<>();
     private ShipmentDetail shipment = new ShipmentDetail();
 
     private List<OrderStatusHistory> statusHistory = new ArrayList<>();
@@ -57,10 +58,13 @@ public class OrderEntity extends BaseEntity {
     public static class OrderItemDetail {
         private String id;
         private String title;
-        private String variant;
+        private String variant;       // e.g. "Clear", "Black"
+        private String color;         // explicit color choice
+        private String textToPrint;   // custom text to print on product (e.g. name, date)
         private int quantity;
         private double price;
-        private List<String> photos = new ArrayList<>();
+        private List<String> photos = new ArrayList<>(); // Uploaded photo URLs from MinIO (JPG, PNG, PDF)
+        private String printNotes;    // optional instructions for printing/placement
     }
 
     @Data

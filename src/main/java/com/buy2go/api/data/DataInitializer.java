@@ -163,14 +163,17 @@ public class DataInitializer implements CommandLineRunner {
             ));
 
             List<OrderEntity.OrderItemDetail> items = new ArrayList<>();
-            items.add(new OrderEntity.OrderItemDetail(
-                    "item-1",
-                    "Customised Key Chain",
-                    "Standard / Clear",
-                    1,
-                    99,
-                    List.of("/assests/1cliq-keychain.jpg")
-            ));
+            OrderEntity.OrderItemDetail item = new OrderEntity.OrderItemDetail();
+            item.setId("item-1");
+            item.setTitle("Customised Key Chain");
+            item.setVariant("Standard / Clear");
+            item.setColor("Clear");
+            item.setTextToPrint("Nicy & Friends 2026");
+            item.setQuantity(1);
+            item.setPrice(99);
+            item.setPhotos(List.of("/assests/1cliq-keychain.jpg"));
+            item.setPrintNotes("High-definition dual-sided acrylic print");
+            items.add(item);
             order.setItems(items);
 
             order.setShipment(new OrderEntity.ShipmentDetail(
