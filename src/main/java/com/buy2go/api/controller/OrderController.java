@@ -33,17 +33,13 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    @PostMapping(value = {"/upload-photo", "/upload-image"}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = {MediaType.TEXT_PLAIN_VALUE, MediaType.APPLICATION_JSON_VALUE})
+    @PostMapping(value = "/upload-photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = {MediaType.TEXT_PLAIN_VALUE, MediaType.APPLICATION_JSON_VALUE})
     @Operation(summary = "Upload single photo to MinIO for product printing - returns MinIO URL string directly")
-    public ResponseEntity<String> uploadPhoto(
-            @RequestParam(value = "file", required = false) MultipartFile file,
-            @RequestParam(value = "photo", required = false) MultipartFile photo,
-            @RequestParam(value = "image", required = false) MultipartFile image) {
-        MultipartFile uploadFile = file != null ? file : (photo != null ? photo : image);
-        if (uploadFile == null || uploadFile.isEmpty()) {
+    public ResponseEntity<String> uploadPhoto(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().body("File is required");
         }
-        String url = orderService.uploadOrderPhoto(uploadFile);
+        String url = orderService.uploadOrderPhoto(file);
         return ResponseEntity.ok(url);
     }
 
