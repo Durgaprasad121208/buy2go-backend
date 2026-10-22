@@ -1,6 +1,6 @@
 package com.buy2go.api.dto.response;
 
-import com.buy2go.api.document.OrderDocument;
+import com.buy2go.api.entity.OrderEntity;
 import com.buy2go.api.enums.OrderStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,10 +24,10 @@ public class OrderResponseDTO {
     private double totalAmount;
     private OrderStatus status;
 
-    private OrderDocument.CustomerDetail customer;
-    private List<OrderDocument.OrderItemDetail> items;
-    private OrderDocument.ShipmentDetail shipment;
-    private List<OrderDocument.OrderStatusHistory> statusHistory;
+    private OrderEntity.CustomerDetail customer;
+    private List<OrderEntity.OrderItemDetail> items;
+    private OrderEntity.ShipmentDetail shipment;
+    private List<OrderEntity.OrderStatusHistory> statusHistory;
 
     private Instant createdAt;
     private Instant updatedAt;

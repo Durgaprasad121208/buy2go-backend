@@ -1,6 +1,6 @@
 package com.buy2go.api.service.impl;
 
-import com.buy2go.api.document.OrderDocument;
+import com.buy2go.api.entity.OrderEntity;
 import com.buy2go.api.dto.response.DashboardMetricsDTO;
 import com.buy2go.api.dto.response.OrderResponseDTO;
 import com.buy2go.api.enums.FilterType;
@@ -35,10 +35,10 @@ public class DashboardServiceImpl implements DashboardService {
             statusCounts.put(status, orderRepository.countByStatusAndIsDeletedFalse(status));
         }
 
-        List<OrderDocument> allOrders = orderRepository.findByIsDeletedFalse(PageRequest.of(0, 10000)).getContent();
+        List<OrderEntity> allOrders = orderRepository.findByIsDeletedFalse(PageRequest.of(0, 10000)).getContent();
         double totalRevenue = allOrders.stream()
                 .filter(o -> o.getStatus() != OrderStatus.Cancelled)
-                .mapToDouble(OrderDocument::getTotalAmount)
+                .mapToDouble(OrderEntity::getTotalAmount)
                 .sum();
 
         List<OrderResponseDTO> recentOrders = orderRepository.findTop5ByIsDeletedFalseOrderByCreatedAtDesc().stream()
@@ -70,10 +70,10 @@ public class DashboardServiceImpl implements DashboardService {
             default -> start = now.minus(30, ChronoUnit.DAYS);
         }
 
-        List<OrderDocument> orders = orderRepository.findByCreatedAtBetweenAndIsDeletedFalse(start, now);
+        List<OrderEntity> orders = orderRepository.findByCreatedAtBetweenAndIsDeletedFalse(start, now);
         double periodRevenue = orders.stream()
                 .filter(o -> o.getStatus() != OrderStatus.Cancelled)
-                .mapToDouble(OrderDocument::getTotalAmount)
+                .mapToDouble(OrderEntity::getTotalAmount)
                 .sum();
 
         Map<String, Object> analytics = new HashMap<>();

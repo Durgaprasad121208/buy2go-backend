@@ -1,4 +1,4 @@
-package com.buy2go.api.document;
+package com.buy2go.api.entity;
 
 import com.buy2go.api.enums.OrderStatus;
 import lombok.AllArgsConstructor;
@@ -17,7 +17,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Document(collection = "orders")
-public class OrderDocument extends BaseDocument {
+public class OrderEntity extends BaseEntity {
 
     @Indexed(unique = true)
     private String orderNumber;

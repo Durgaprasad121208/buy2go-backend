@@ -1,6 +1,6 @@
 package com.buy2go.api.service.impl;
 
-import com.buy2go.api.document.ProductDocument;
+import com.buy2go.api.entity.ProductEntity;
 import com.buy2go.api.dto.PagedResponse;
 import com.buy2go.api.dto.request.ProductRequestDTO;
 import com.buy2go.api.dto.response.ProductResponseDTO;
@@ -36,7 +36,7 @@ public class ProductServiceImpl implements ProductService {
     public PagedResponse<ProductResponseDTO> getAllProducts(int page, int size, String search) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        Page<ProductDocument> productPage;
+        Page<ProductEntity> productPage;
         if (search != null && !search.trim().isEmpty()) {
             productPage = productRepository.searchProducts(search.trim(), pageable);
         } else {
@@ -59,39 +59,42 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponseDTO getProductById(String id) {
-        ProductDocument doc = productRepository.findByIdAndIsDeletedFalse(id)
+        ProductEntity doc = productRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + id));
         return ModelMapper.toProductResponse(doc);
     }
 
     @Override
     public ProductResponseDTO getProductBySlug(String slug) {
-        ProductDocument doc = productRepository.findBySlugAndIsDeletedFalse(slug)
+        ProductEntity doc = productRepository.findBySlugAndIsDeletedFalse(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with slug: " + slug));
         return ModelMapper.toProductResponse(doc);
     }
 
     @Override
     public ProductResponseDTO createProduct(ProductRequestDTO request) {
-        ProductDocument doc = ModelMapper.toProductDocument(request);
+        ProductEntity doc = ModelMapper.toProductEntity(request);
         doc = productRepository.save(doc);
         return ModelMapper.toProductResponse(doc);
     }
 
     @Override
     public ProductResponseDTO updateProduct(String id, ProductRequestDTO request) {
-        ProductDocument doc = productRepository.findByIdAndIsDeletedFalse(id)
+        ProductEntity doc = productRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + id));
 
         doc.setTitle(request.getTitle());
+        if (request.getTitle() != null && !request.getTitle().isEmpty()) {
+            doc.setSlug(OrderNumberGenerator.generateSlug(request.getTitle()));
+        }
         doc.setCategory(request.getCategory());
-        doc.setPrice(request.getPrice());
         doc.setStartingPrice(request.getStartingPrice() > 0 ? request.getStartingPrice() : request.getPrice());
+        doc.setPrice(request.getPrice());
         doc.setFormattedPrice("₹" + (int) request.getPrice());
-        doc.setDescription(request.getDescription());
         if (request.getImage() != null && !request.getImage().isEmpty()) {
             doc.setImage(request.getImage());
         }
+        doc.setDescription(request.getDescription());
         doc.setLive(request.isLive());
         doc.setStockQuantity(request.getStockQuantity());
         doc.setUpdatedAt(Instant.now());
@@ -102,7 +105,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponseDTO toggleLiveStatus(String id) {
-        ProductDocument doc = productRepository.findByIdAndIsDeletedFalse(id)
+        ProductEntity doc = productRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + id));
 
         doc.setLive(!doc.isLive());
@@ -113,7 +116,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public void deleteProduct(String id) {
-        ProductDocument doc = productRepository.findByIdAndIsDeletedFalse(id)
+        ProductEntity doc = productRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + id));
 
         doc.setDeleted(true);

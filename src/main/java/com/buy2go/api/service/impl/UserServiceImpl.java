@@ -1,7 +1,6 @@
 package com.buy2go.api.service.impl;
 
-import com.buy2go.api.document.UserAuthDocument;
-import com.buy2go.api.document.UserDocument;
+import com.buy2go.api.entity.UserEntity;
 import com.buy2go.api.dto.PagedResponse;
 import com.buy2go.api.dto.response.UserResponseDTO;
 import com.buy2go.api.exception.ResourceNotFoundException;
@@ -30,7 +29,7 @@ public class UserServiceImpl implements UserService {
     public PagedResponse<UserResponseDTO> getAllUsers(int page, int size, String search) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        Page<UserDocument> userPage;
+        Page<UserEntity> userPage;
         if (search != null && !search.trim().isEmpty()) {
             userPage = userRepository.searchUsers(search.trim(), pageable);
         } else {
@@ -53,7 +52,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponseDTO getUserById(String id) {
-        UserDocument user = userRepository.findById(id)
+        UserEntity user = userRepository.findById(id)
                 .filter(u -> !u.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + id));
         return ModelMapper.toUserResponse(user);
@@ -61,7 +60,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void deleteUser(String id) {
-        UserDocument user = userRepository.findById(id)
+        UserEntity user = userRepository.findById(id)
                 .filter(u -> !u.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + id));
 

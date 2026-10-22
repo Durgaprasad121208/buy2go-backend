@@ -30,9 +30,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = parseJwt(request);
             if (jwt != null && tokenProvider.validateJwtToken(jwt)) {
-                String username = tokenProvider.getUsernameFromJwtToken(jwt);
+                String email = tokenProvider.getUsernameFromJwtToken(jwt);
 
-                UserDetails userDetails = userAuthRepository.findByUserNameAndIsDeletedFalse(username)
+                UserDetails userDetails = userAuthRepository.findByEmailAndIsDeletedFalse(email)
                         .orElse(null);
 
                 if (userDetails != null) {

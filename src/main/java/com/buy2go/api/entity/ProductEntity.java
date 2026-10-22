@@ -1,4 +1,4 @@
-package com.buy2go.api.document;
+package com.buy2go.api.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -12,7 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @AllArgsConstructor
 @NoArgsConstructor
 @Document(collection = "products")
-public class ProductDocument extends BaseDocument {
+public class ProductEntity extends BaseEntity {
 
     private String title;
 

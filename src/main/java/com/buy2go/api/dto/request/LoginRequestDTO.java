@@ -9,6 +9,17 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class LoginRequestDTO {
 
-    private String userName;
+    private String email;
     private String password;
+
+    // Backward compatibility if userName is passed in request payload
+    public void setUserName(String userName) {
+        if (this.email == null || this.email.trim().isEmpty()) {
+            this.email = userName;
+        }
+    }
+
+    public String getUserName() {
+        return this.email;
+    }
 }

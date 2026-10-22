@@ -1,4 +1,4 @@
-package com.buy2go.api.document;
+package com.buy2go.api.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -11,7 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @AllArgsConstructor
 @NoArgsConstructor
 @Document(collection = "roles")
-public class RoleDocument extends BaseDocument {
+public class RoleEntity extends BaseEntity {
 
     private String name;
     private String description;

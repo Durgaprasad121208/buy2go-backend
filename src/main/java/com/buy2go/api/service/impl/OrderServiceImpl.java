@@ -1,6 +1,6 @@
 package com.buy2go.api.service.impl;
 
-import com.buy2go.api.document.OrderDocument;
+import com.buy2go.api.entity.OrderEntity;
 import com.buy2go.api.dto.PagedResponse;
 import com.buy2go.api.dto.request.OrderRequestDTO;
 import com.buy2go.api.dto.request.OrderStatusUpdateDTO;
@@ -37,24 +37,24 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderResponseDTO createOrder(OrderRequestDTO request) {
-        OrderDocument doc = new OrderDocument();
+        OrderEntity doc = new OrderEntity();
         doc.setOrderNumber(OrderNumberGenerator.generateOrderNumber());
         doc.setCustomer(request.getCustomer());
         doc.setCustomerName(request.getCustomer() != null ? request.getCustomer().getName() : "Customer");
         doc.setLocation(request.getLocation() != null ? request.getLocation() : (request.getCustomer() != null ? request.getCustomer().getAddress() : ""));
         doc.setItems(request.getItems() != null ? request.getItems() : new ArrayList<>());
-        doc.setItemCount(doc.getItems().stream().mapToInt(OrderDocument.OrderItemDetail::getQuantity).sum());
+        doc.setItemCount(doc.getItems().stream().mapToInt(OrderEntity.OrderItemDetail::getQuantity).sum());
         doc.setTotalAmount(request.getTotalAmount());
         doc.setStatus(OrderStatus.New);
 
-        OrderDocument.ShipmentDetail shipment = new OrderDocument.ShipmentDetail();
+        OrderEntity.ShipmentDetail shipment = new OrderEntity.ShipmentDetail();
         shipment.setStatus(OrderStatus.New);
         shipment.setCourier("Pending Assignment");
         shipment.setTrackingNumber("");
         shipment.setNotes("");
         doc.setShipment(shipment);
 
-        OrderDocument.OrderStatusHistory history = new OrderDocument.OrderStatusHistory(
+        OrderEntity.OrderStatusHistory history = new OrderEntity.OrderStatusHistory(
                 null,
                 OrderStatus.New,
                 "SYSTEM",
@@ -71,7 +71,7 @@ public class OrderServiceImpl implements OrderService {
     public PagedResponse<OrderResponseDTO> getAllOrders(int page, int size, OrderStatus status, String search) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        Page<OrderDocument> orderPage;
+        Page<OrderEntity> orderPage;
         boolean hasSearch = search != null && !search.trim().isEmpty();
 
         if (status != null && hasSearch) {
@@ -100,21 +100,21 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderResponseDTO getOrderById(String id) {
-        OrderDocument doc = orderRepository.findByIdAndIsDeletedFalse(id)
+        OrderEntity doc = orderRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + id));
         return ModelMapper.toOrderResponse(doc);
     }
 
     @Override
     public OrderResponseDTO getOrderByOrderNumber(String orderNumber) {
-        OrderDocument doc = orderRepository.findByOrderNumberAndIsDeletedFalse(orderNumber)
+        OrderEntity doc = orderRepository.findByOrderNumberAndIsDeletedFalse(orderNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with order number: " + orderNumber));
         return ModelMapper.toOrderResponse(doc);
     }
 
     @Override
     public OrderResponseDTO updateOrderStatus(String id, OrderStatusUpdateDTO request, String username) {
-        OrderDocument doc = orderRepository.findByIdAndIsDeletedFalse(id)
+        OrderEntity doc = orderRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + id));
 
         OrderStatus oldStatus = doc.getStatus();
@@ -125,7 +125,7 @@ public class OrderServiceImpl implements OrderService {
             doc.getShipment().setStatus(newStatus);
         }
 
-        OrderDocument.OrderStatusHistory history = new OrderDocument.OrderStatusHistory(
+        OrderEntity.OrderStatusHistory history = new OrderEntity.OrderStatusHistory(
                 oldStatus,
                 newStatus,
                 username != null ? username : "ADMIN",
@@ -141,12 +141,12 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderResponseDTO updateShipmentDetails(String id, ShipmentUpdateDTO request) {
-        OrderDocument doc = orderRepository.findByIdAndIsDeletedFalse(id)
+        OrderEntity doc = orderRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + id));
 
-        OrderDocument.ShipmentDetail shipment = doc.getShipment();
+        OrderEntity.ShipmentDetail shipment = doc.getShipment();
         if (shipment == null) {
-            shipment = new OrderDocument.ShipmentDetail();
+            shipment = new OrderEntity.ShipmentDetail();
             doc.setShipment(shipment);
         }
 
@@ -171,7 +171,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public ByteArrayInputStream downloadOrdersExcel(OrderStatus status) {
-        List<OrderDocument> orders;
+        List<OrderEntity> orders;
         if (status != null) {
             orders = orderRepository.findByStatusAndIsDeletedFalse(status, PageRequest.of(0, 1000)).getContent();
         } else {
@@ -199,7 +199,7 @@ public class OrderServiceImpl implements OrderService {
             }
 
             int rowIdx = 1;
-            for (OrderDocument o : orders) {
+            for (OrderEntity o : orders) {
                 Row row = sheet.createRow(rowIdx++);
 
                 row.createCell(0).setCellValue(o.getOrderNumber());

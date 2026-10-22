@@ -1,4 +1,4 @@
-package com.buy2go.api.document;
+package com.buy2go.api.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -18,15 +18,14 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "user_auth")
-public class UserAuthDocument extends BaseDocument implements UserDetails {
+public class UserAuthEntity extends BaseEntity implements UserDetails {
 
     @Indexed(unique = true)
-    private String userName;
+    private String email;
 
     private String password;
     private String firstName;
     private String lastName;
-    private String email;
     private String userId;
     private String roleName;
 
@@ -45,7 +44,7 @@ public class UserAuthDocument extends BaseDocument implements UserDetails {
 
     @Override
     public String getUsername() {
-        return userName;
+        return email;
     }
 
     @Override

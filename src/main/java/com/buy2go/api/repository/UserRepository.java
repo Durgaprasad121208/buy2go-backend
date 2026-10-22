@@ -1,6 +1,6 @@
 package com.buy2go.api.repository;
 
-import com.buy2go.api.document.UserDocument;
+import com.buy2go.api.entity.UserEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -10,11 +10,11 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends MongoRepository<UserDocument, String> {
-    Optional<UserDocument> findByEmailAndIsDeletedFalse(String email);
+public interface UserRepository extends MongoRepository<UserEntity, String> {
+    Optional<UserEntity> findByEmailAndIsDeletedFalse(String email);
 
     @Query("{ 'isDeleted': false, $or: [ { 'firstName': { $regex: ?0, $options: 'i' } }, { 'lastName': { $regex: ?0, $options: 'i' } }, { 'email': { $regex: ?0, $options: 'i' } } ] }")
-    Page<UserDocument> searchUsers(String search, Pageable pageable);
+    Page<UserEntity> searchUsers(String search, Pageable pageable);
 
-    Page<UserDocument> findByIsDeletedFalse(Pageable pageable);
+    Page<UserEntity> findByIsDeletedFalse(Pageable pageable);
 }

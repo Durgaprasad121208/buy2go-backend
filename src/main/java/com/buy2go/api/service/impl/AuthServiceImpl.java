@@ -2,8 +2,8 @@ package com.buy2go.api.service.impl;
 
 import com.buy2go.api.config.JwtTokenProvider;
 import com.buy2go.api.constants.Constants;
-import com.buy2go.api.document.UserAuthDocument;
-import com.buy2go.api.document.UserDocument;
+import com.buy2go.api.entity.UserAuthEntity;
+import com.buy2go.api.entity.UserEntity;
 import com.buy2go.api.dto.request.ChangePasswordRequestDTO;
 import com.buy2go.api.dto.request.LoginRequestDTO;
 import com.buy2go.api.dto.request.RegisterRequestDTO;
@@ -31,11 +31,12 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public JwtResponseDTO login(LoginRequestDTO request) {
-        UserAuthDocument auth = userAuthRepository.findByUserNameAndIsDeletedFalse(request.getUserName())
-                .orElseThrow(() -> new BadCredentialsException("Invalid username or password"));
+        String loginIdentifier = request.getEmail() != null ? request.getEmail() : request.getUserName();
+        UserAuthEntity auth = userAuthRepository.findByEmailAndIsDeletedFalse(loginIdentifier)
+                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
         if (!PasswordUtils.matches(request.getPassword(), auth.getPassword())) {
-            throw new BadCredentialsException("Invalid username or password");
+            throw new BadCredentialsException("Invalid email or password");
         }
 
         String token = tokenProvider.generateTokenFromUsername(auth.getUsername());
@@ -44,7 +45,6 @@ public class AuthServiceImpl implements AuthService {
                 .token(token)
                 .type("Bearer")
                 .id(auth.getUserId())
-                .userName(auth.getUsername())
                 .email(auth.getEmail())
                 .firstName(auth.getFirstName())
                 .lastName(auth.getLastName())
@@ -54,15 +54,12 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public UserResponseDTO register(RegisterRequestDTO request) {
-        if (userAuthRepository.existsByUserName(request.getUserName())) {
-            throw new SystemException("Username is already taken");
-        }
-
-        if (userRepository.findByEmailAndIsDeletedFalse(request.getEmail()).isPresent()) {
+        if (userRepository.findByEmailAndIsDeletedFalse(request.getEmail()).isPresent()
+                || userAuthRepository.existsByEmail(request.getEmail())) {
             throw new SystemException("Email is already registered");
         }
 
-        UserDocument user = new UserDocument();
+        UserEntity user = new UserEntity();
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setEmail(request.getEmail());
@@ -70,12 +67,11 @@ public class AuthServiceImpl implements AuthService {
         user.setRoleName(Constants.ROLE_CUSTOMER);
         user = userRepository.save(user);
 
-        UserAuthDocument auth = new UserAuthDocument();
-        auth.setUserName(request.getUserName());
+        UserAuthEntity auth = new UserAuthEntity();
+        auth.setEmail(request.getEmail());
         auth.setPassword(PasswordUtils.encode(request.getPassword()));
         auth.setFirstName(request.getFirstName());
         auth.setLastName(request.getLastName());
-        auth.setEmail(request.getEmail());
         auth.setUserId(user.getId());
         auth.setRoleName(Constants.ROLE_CUSTOMER);
         userAuthRepository.save(auth);
@@ -84,9 +80,9 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void changePassword(String username, ChangePasswordRequestDTO request) {
-        UserAuthDocument auth = userAuthRepository.findByUserNameAndIsDeletedFalse(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+    public void changePassword(String email, ChangePasswordRequestDTO request) {
+        UserAuthEntity auth = userAuthRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
 
         if (!PasswordUtils.matches(request.getOldPassword(), auth.getPassword())) {
             throw new InvalidPasswordException("Current password does not match");
@@ -97,11 +93,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public UserResponseDTO getCurrentUser(String username) {
-        UserAuthDocument auth = userAuthRepository.findByUserNameAndIsDeletedFalse(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+    public UserResponseDTO getCurrentUser(String email) {
+        UserAuthEntity auth = userAuthRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
 
-        UserDocument user = userRepository.findById(auth.getUserId())
+        UserEntity user = userRepository.findById(auth.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User details not found for ID: " + auth.getUserId()));
 
         return ModelMapper.toUserResponse(user);

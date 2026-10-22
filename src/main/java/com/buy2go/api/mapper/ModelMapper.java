@@ -1,8 +1,8 @@
 package com.buy2go.api.mapper;
 
-import com.buy2go.api.document.OrderDocument;
-import com.buy2go.api.document.ProductDocument;
-import com.buy2go.api.document.UserDocument;
+import com.buy2go.api.entity.OrderEntity;
+import com.buy2go.api.entity.ProductEntity;
+import com.buy2go.api.entity.UserEntity;
 import com.buy2go.api.dto.request.ProductRequestDTO;
 import com.buy2go.api.dto.response.OrderResponseDTO;
 import com.buy2go.api.dto.response.ProductResponseDTO;
@@ -11,7 +11,7 @@ import com.buy2go.api.utils.OrderNumberGenerator;
 
 public class ModelMapper {
 
-    public static ProductResponseDTO toProductResponse(ProductDocument doc) {
+    public static ProductResponseDTO toProductResponse(ProductEntity doc) {
         if (doc == null) return null;
         return ProductResponseDTO.builder()
                 .id(doc.getId())
@@ -29,9 +29,9 @@ public class ModelMapper {
                 .build();
     }
 
-    public static ProductDocument toProductDocument(ProductRequestDTO dto) {
+    public static ProductEntity toProductEntity(ProductRequestDTO dto) {
         if (dto == null) return null;
-        ProductDocument doc = new ProductDocument();
+        ProductEntity doc = new ProductEntity();
         doc.setTitle(dto.getTitle());
         doc.setSlug(OrderNumberGenerator.generateSlug(dto.getTitle()));
         doc.setCategory(dto.getCategory());
@@ -45,7 +45,12 @@ public class ModelMapper {
         return doc;
     }
 
-    public static OrderResponseDTO toOrderResponse(OrderDocument doc) {
+    // Keep toProductDocument for backward compatibility
+    public static ProductEntity toProductDocument(ProductRequestDTO dto) {
+        return toProductEntity(dto);
+    }
+
+    public static OrderResponseDTO toOrderResponse(OrderEntity doc) {
         if (doc == null) return null;
         return OrderResponseDTO.builder()
                 .id(doc.getId())
@@ -64,7 +69,7 @@ public class ModelMapper {
                 .build();
     }
 
-    public static UserResponseDTO toUserResponse(UserDocument doc) {
+    public static UserResponseDTO toUserResponse(UserEntity doc) {
         if (doc == null) return null;
         return UserResponseDTO.builder()
                 .id(doc.getId())

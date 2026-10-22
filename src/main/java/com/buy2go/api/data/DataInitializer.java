@@ -1,11 +1,11 @@
 package com.buy2go.api.data;
 
 import com.buy2go.api.constants.Constants;
-import com.buy2go.api.document.OrderDocument;
-import com.buy2go.api.document.ProductDocument;
-import com.buy2go.api.document.RoleDocument;
-import com.buy2go.api.document.UserAuthDocument;
-import com.buy2go.api.document.UserDocument;
+import com.buy2go.api.entity.OrderEntity;
+import com.buy2go.api.entity.ProductEntity;
+import com.buy2go.api.entity.RoleEntity;
+import com.buy2go.api.entity.UserAuthEntity;
+import com.buy2go.api.entity.UserEntity;
 import com.buy2go.api.enums.OrderStatus;
 import com.buy2go.api.repository.OrderRepository;
 import com.buy2go.api.repository.ProductRepository;
@@ -44,30 +44,30 @@ public class DataInitializer implements CommandLineRunner {
     private void initRoles() {
         if (roleRepository.count() == 0) {
             log.info("Seeding default roles...");
-            roleRepository.save(new RoleDocument(Constants.ROLE_ADMIN, "Administrator with full system privileges"));
-            roleRepository.save(new RoleDocument(Constants.ROLE_CUSTOMER, "Standard customer user"));
-            roleRepository.save(new RoleDocument(Constants.ROLE_STAFF, "Order fulfillment and staff member"));
+            roleRepository.save(new RoleEntity(Constants.ROLE_ADMIN, "Administrator with full system privileges"));
+            roleRepository.save(new RoleEntity(Constants.ROLE_CUSTOMER, "Standard customer user"));
+            roleRepository.save(new RoleEntity(Constants.ROLE_STAFF, "Order fulfillment and staff member"));
         }
     }
 
     private void initAdminUser() {
-        if (!userAuthRepository.existsByUserName("admin")) {
-            log.info("Creating default admin account (admin / Admin@123)...");
+        String adminEmail = "admin@buy2go.com";
+        if (!userAuthRepository.existsByEmail(adminEmail)) {
+            log.info("Creating default admin account ({} / Admin@123)...", adminEmail);
 
-            UserDocument user = new UserDocument();
+            UserEntity user = new UserEntity();
             user.setFirstName("Super");
             user.setLastName("Admin");
-            user.setEmail("admin@buy2go.com");
+            user.setEmail(adminEmail);
             user.setPhone("9999999999");
             user.setRoleName(Constants.ROLE_ADMIN);
             user = userRepository.save(user);
 
-            UserAuthDocument auth = new UserAuthDocument();
-            auth.setUserName("admin");
+            UserAuthEntity auth = new UserAuthEntity();
+            auth.setEmail(adminEmail);
             auth.setPassword(PasswordUtils.encode("Admin@123"));
             auth.setFirstName("Super");
             auth.setLastName("Admin");
-            auth.setEmail("admin@buy2go.com");
             auth.setUserId(user.getId());
             auth.setRoleName(Constants.ROLE_ADMIN);
             userAuthRepository.save(auth);
@@ -128,8 +128,8 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private ProductDocument createProduct(String title, String slug, String category, double startingPrice, double price, String formattedPrice, String image, String description, boolean isLive) {
-        ProductDocument doc = new ProductDocument();
+    private ProductEntity createProduct(String title, String slug, String category, double startingPrice, double price, String formattedPrice, String image, String description, boolean isLive) {
+        ProductEntity doc = new ProductEntity();
         doc.setTitle(title);
         doc.setSlug(slug);
         doc.setCategory(category);
@@ -147,7 +147,7 @@ public class DataInitializer implements CommandLineRunner {
         if (orderRepository.count() == 0) {
             log.info("Seeding initial demo order...");
 
-            OrderDocument order = new OrderDocument();
+            OrderEntity order = new OrderEntity();
             order.setOrderNumber("#9a4c3517");
             order.setCustomerName("Nicy");
             order.setLocation("Nellore 522002");
@@ -155,15 +155,15 @@ public class DataInitializer implements CommandLineRunner {
             order.setTotalAmount(99);
             order.setStatus(OrderStatus.New);
 
-            order.setCustomer(new OrderDocument.CustomerDetail(
+            order.setCustomer(new OrderEntity.CustomerDetail(
                     "Nicy",
                     "9490022488",
                     "nicy@example.com",
                     "Police colony, Nellore 522002"
             ));
 
-            List<OrderDocument.OrderItemDetail> items = new ArrayList<>();
-            items.add(new OrderDocument.OrderItemDetail(
+            List<OrderEntity.OrderItemDetail> items = new ArrayList<>();
+            items.add(new OrderEntity.OrderItemDetail(
                     "item-1",
                     "Customised Key Chain",
                     "Standard / Clear",
@@ -173,14 +173,14 @@ public class DataInitializer implements CommandLineRunner {
             ));
             order.setItems(items);
 
-            order.setShipment(new OrderDocument.ShipmentDetail(
+            order.setShipment(new OrderEntity.ShipmentDetail(
                     OrderStatus.New,
                     "Express Post",
                     "",
                     "Awaiting dispatch"
             ));
 
-            order.getStatusHistory().add(new OrderDocument.OrderStatusHistory(
+            order.getStatusHistory().add(new OrderEntity.OrderStatusHistory(
                     null,
                     OrderStatus.New,
                     "SYSTEM",
