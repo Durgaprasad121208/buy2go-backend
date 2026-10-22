@@ -4,8 +4,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,6 +21,10 @@ import java.util.List;
 @AllArgsConstructor
 @Document(collection = "user_auth")
 public class UserAuthEntity extends BaseEntity implements UserDetails {
+
+    @Id
+    @Field("_id")
+    private String id;
 
     @Indexed(unique = true)
     private String email;

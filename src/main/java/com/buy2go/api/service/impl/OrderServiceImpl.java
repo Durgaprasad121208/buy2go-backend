@@ -108,7 +108,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponseDTO getOrderByOrderNumber(String orderNumber) {
         OrderEntity doc = orderRepository.findByOrderNumberAndIsDeletedFalse(orderNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with order number: " + orderNumber));
+                .or(() -> orderRepository.findByIdAndIsDeletedFalse(orderNumber))
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with order number / ID: " + orderNumber));
         return ModelMapper.toOrderResponse(doc);
     }
 
