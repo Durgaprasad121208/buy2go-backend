@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -34,25 +33,25 @@ public class OrderController {
 
     private final OrderService orderService;
 
+    @PostMapping(value = {"/upload-photo", "/upload-image"}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = {MediaType.TEXT_PLAIN_VALUE, MediaType.APPLICATION_JSON_VALUE})
+    @Operation(summary = "Upload single photo to MinIO for product printing - returns MinIO URL string directly")
+    public ResponseEntity<String> uploadPhoto(
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "photo", required = false) MultipartFile photo,
+            @RequestParam(value = "image", required = false) MultipartFile image) {
+        MultipartFile uploadFile = file != null ? file : (photo != null ? photo : image);
+        if (uploadFile == null || uploadFile.isEmpty()) {
+            return ResponseEntity.badRequest().body("File is required");
+        }
+        String url = orderService.uploadOrderPhoto(uploadFile);
+        return ResponseEntity.ok(url);
+    }
+
     @PostMapping("/create")
-    @Operation(summary = "Place a new customer order with customized product photos and text to print")
+    @Operation(summary = "Place a new customer order with customized product photo and text to print")
     public ResponseEntity<ApiResponse<OrderResponseDTO>> createOrder(@RequestBody OrderRequestDTO request) {
         OrderResponseDTO response = orderService.createOrder(request);
         return ResponseEntity.ok(ApiResponse.success("Order placed successfully", response));
-    }
-
-    @PostMapping(value = "/upload-photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Upload multiple photos (JPG, PNG, PDF - up to 8 files) to MinIO for product printing")
-    public ResponseEntity<ApiResponse<List<String>>> uploadPhotos(@RequestParam("files") MultipartFile[] files) {
-        List<String> urls = orderService.uploadOrderPhotos(files);
-        return ResponseEntity.ok(ApiResponse.success("Photos uploaded successfully", urls));
-    }
-
-    @PostMapping(value = "/upload-photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Upload single photo to MinIO for product printing")
-    public ResponseEntity<ApiResponse<String>> uploadPhoto(@RequestParam("file") MultipartFile file) {
-        String url = orderService.uploadOrderPhoto(file);
-        return ResponseEntity.ok(ApiResponse.success("Photo uploaded successfully", url));
     }
 
     @PutMapping("/{id}/items/{itemId}/customization")
@@ -65,33 +64,32 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success("Item customization updated successfully", response));
     }
 
-    @PostMapping("/{id}/items/{itemId}/photos")
-    @Operation(summary = "Add more photo URLs to an order item")
-    public ResponseEntity<ApiResponse<OrderResponseDTO>> addItemPhotos(
-            @PathVariable String id,
-            @PathVariable String itemId,
-            @RequestBody List<String> photoUrls) {
-        OrderResponseDTO response = orderService.addItemPhotos(id, itemId, photoUrls);
-        return ResponseEntity.ok(ApiResponse.success("Photos added to item successfully", response));
-    }
-
-    @DeleteMapping("/{id}/items/{itemId}/photos")
-    @Operation(summary = "Remove a photo URL from an order item")
-    public ResponseEntity<ApiResponse<OrderResponseDTO>> removeItemPhoto(
+    @PutMapping("/{id}/items/{itemId}/photo")
+    @Operation(summary = "Update single photo URL on an order item")
+    public ResponseEntity<ApiResponse<OrderResponseDTO>> updateItemPhoto(
             @PathVariable String id,
             @PathVariable String itemId,
             @RequestParam String photoUrl) {
-        OrderResponseDTO response = orderService.removeItemPhoto(id, itemId, photoUrl);
-        return ResponseEntity.ok(ApiResponse.success("Photo removed successfully", response));
+        OrderResponseDTO response = orderService.updateItemPhoto(id, itemId, photoUrl);
+        return ResponseEntity.ok(ApiResponse.success("Item photo updated successfully", response));
     }
 
-    @PutMapping("/{id}/additional-photos")
-    @Operation(summary = "Update order checkout-level additional photos")
-    public ResponseEntity<ApiResponse<OrderResponseDTO>> updateAdditionalPhotos(
+    @DeleteMapping("/{id}/items/{itemId}/photo")
+    @Operation(summary = "Remove photo from an order item")
+    public ResponseEntity<ApiResponse<OrderResponseDTO>> removeItemPhoto(
             @PathVariable String id,
-            @RequestBody List<String> additionalPhotos) {
-        OrderResponseDTO response = orderService.updateOrderAdditionalPhotos(id, additionalPhotos);
-        return ResponseEntity.ok(ApiResponse.success("Additional photos updated successfully", response));
+            @PathVariable String itemId) {
+        OrderResponseDTO response = orderService.removeItemPhoto(id, itemId);
+        return ResponseEntity.ok(ApiResponse.success("Item photo removed successfully", response));
+    }
+
+    @PutMapping("/{id}/photo")
+    @Operation(summary = "Update order-level photo URL")
+    public ResponseEntity<ApiResponse<OrderResponseDTO>> updateOrderPhoto(
+            @PathVariable String id,
+            @RequestParam String photoUrl) {
+        OrderResponseDTO response = orderService.updateOrderPhoto(id, photoUrl);
+        return ResponseEntity.ok(ApiResponse.success("Order photo updated successfully", response));
     }
 
     @GetMapping

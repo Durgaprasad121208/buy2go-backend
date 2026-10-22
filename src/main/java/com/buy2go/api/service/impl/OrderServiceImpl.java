@@ -31,7 +31,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -57,7 +56,13 @@ public class OrderServiceImpl implements OrderService {
             }
         }
         doc.setItems(items);
-        doc.setAdditionalPhotos(request.getAdditionalPhotos() != null ? request.getAdditionalPhotos() : new ArrayList<>());
+
+        // Single photo for the order (from request.getPhoto() or first item's photo)
+        String orderPhoto = request.getPhoto();
+        if ((orderPhoto == null || orderPhoto.isEmpty()) && !items.isEmpty() && items.get(0).getPhoto() != null) {
+            orderPhoto = items.get(0).getPhoto();
+        }
+        doc.setPhoto(orderPhoto);
 
         doc.setItemCount(doc.getItems().stream().mapToInt(OrderEntity.OrderItemDetail::getQuantity).sum());
         doc.setTotalAmount(request.getTotalAmount());
@@ -182,20 +187,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public List<String> uploadOrderPhotos(MultipartFile[] files) {
-        if (files == null || files.length == 0) {
-            return Collections.emptyList();
-        }
-        List<String> urls = new ArrayList<>();
-        for (MultipartFile file : files) {
-            if (file != null && !file.isEmpty()) {
-                urls.add(fileStorageService.storeFile(file, "orders/photos"));
-            }
-        }
-        return urls;
-    }
-
-    @Override
     public String uploadOrderPhoto(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new SystemException("Uploaded file cannot be empty");
@@ -215,28 +206,11 @@ public class OrderServiceImpl implements OrderService {
         if (customization.getVariant() != null) targetItem.setVariant(customization.getVariant());
         if (customization.getColor() != null) targetItem.setColor(customization.getColor());
         if (customization.getTextToPrint() != null) targetItem.setTextToPrint(customization.getTextToPrint());
-        if (customization.getPhotos() != null) targetItem.setPhotos(new ArrayList<>(customization.getPhotos()));
+        if (customization.getPhoto() != null) targetItem.setPhoto(customization.getPhoto());
         if (customization.getPrintNotes() != null) targetItem.setPrintNotes(customization.getPrintNotes());
 
-        doc.setUpdatedAt(Instant.now());
-        doc = orderRepository.save(doc);
-        return ModelMapper.toOrderResponse(doc);
-    }
-
-    @Override
-    public OrderResponseDTO addItemPhotos(String orderId, String itemId, List<String> photoUrls) {
-        OrderEntity doc = findOrder(orderId);
-
-        OrderEntity.OrderItemDetail targetItem = doc.getItems().stream()
-                .filter(i -> itemId.equalsIgnoreCase(i.getId()))
-                .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("Item not found in order with ID: " + itemId));
-
-        if (photoUrls != null && !photoUrls.isEmpty()) {
-            if (targetItem.getPhotos() == null) {
-                targetItem.setPhotos(new ArrayList<>());
-            }
-            targetItem.getPhotos().addAll(photoUrls);
+        if (doc.getPhoto() == null || doc.getPhoto().isEmpty()) {
+            doc.setPhoto(targetItem.getPhoto());
         }
 
         doc.setUpdatedAt(Instant.now());
@@ -245,7 +219,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderResponseDTO removeItemPhoto(String orderId, String itemId, String photoUrl) {
+    public OrderResponseDTO updateItemPhoto(String orderId, String itemId, String photoUrl) {
         OrderEntity doc = findOrder(orderId);
 
         OrderEntity.OrderItemDetail targetItem = doc.getItems().stream()
@@ -253,8 +227,9 @@ public class OrderServiceImpl implements OrderService {
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found in order with ID: " + itemId));
 
-        if (targetItem.getPhotos() != null && photoUrl != null) {
-            targetItem.getPhotos().remove(photoUrl.trim());
+        targetItem.setPhoto(photoUrl);
+        if (doc.getPhoto() == null || doc.getPhoto().isEmpty()) {
+            doc.setPhoto(photoUrl);
         }
 
         doc.setUpdatedAt(Instant.now());
@@ -263,9 +238,24 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderResponseDTO updateOrderAdditionalPhotos(String orderId, List<String> additionalPhotos) {
+    public OrderResponseDTO removeItemPhoto(String orderId, String itemId) {
         OrderEntity doc = findOrder(orderId);
-        doc.setAdditionalPhotos(additionalPhotos != null ? new ArrayList<>(additionalPhotos) : new ArrayList<>());
+
+        OrderEntity.OrderItemDetail targetItem = doc.getItems().stream()
+                .filter(i -> itemId.equalsIgnoreCase(i.getId()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found in order with ID: " + itemId));
+
+        targetItem.setPhoto(null);
+        doc.setUpdatedAt(Instant.now());
+        doc = orderRepository.save(doc);
+        return ModelMapper.toOrderResponse(doc);
+    }
+
+    @Override
+    public OrderResponseDTO updateOrderPhoto(String orderId, String photoUrl) {
+        OrderEntity doc = findOrder(orderId);
+        doc.setPhoto(photoUrl);
         doc.setUpdatedAt(Instant.now());
         doc = orderRepository.save(doc);
         return ModelMapper.toOrderResponse(doc);

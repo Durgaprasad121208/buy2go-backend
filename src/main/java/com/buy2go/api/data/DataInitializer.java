@@ -171,10 +171,11 @@ public class DataInitializer implements CommandLineRunner {
             item.setTextToPrint("Nicy & Friends 2026");
             item.setQuantity(1);
             item.setPrice(99);
-            item.setPhotos(List.of("/assests/1cliq-keychain.jpg"));
+            item.setPhoto("/assests/1cliq-keychain.jpg");
             item.setPrintNotes("High-definition dual-sided acrylic print");
             items.add(item);
             order.setItems(items);
+            order.setPhoto("/assests/1cliq-keychain.jpg");
 
             order.setShipment(new OrderEntity.ShipmentDetail(
                     OrderStatus.New,

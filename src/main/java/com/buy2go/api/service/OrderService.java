@@ -10,7 +10,6 @@ import com.buy2go.api.enums.OrderStatus;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
-import java.util.List;
 
 public interface OrderService {
     OrderResponseDTO createOrder(OrderRequestDTO request);
@@ -22,13 +21,12 @@ public interface OrderService {
     OrderResponseDTO cancelOrder(String id, String remarks, String username);
     ByteArrayInputStream downloadOrdersExcel(OrderStatus status);
 
-    // Upload customer photos to MinIO for custom product printing
-    List<String> uploadOrderPhotos(MultipartFile[] files);
+    // Upload single photo to MinIO for product printing - returns MinIO URL only
     String uploadOrderPhoto(MultipartFile file);
 
-    // Edit and update photos / textToPrint / color customization on an order item
+    // Edit and update photo / textToPrint / color customization on an order item
     OrderResponseDTO updateItemCustomization(String orderId, String itemId, ItemCustomizationDTO customization);
-    OrderResponseDTO addItemPhotos(String orderId, String itemId, List<String> photoUrls);
-    OrderResponseDTO removeItemPhoto(String orderId, String itemId, String photoUrl);
-    OrderResponseDTO updateOrderAdditionalPhotos(String orderId, List<String> additionalPhotos);
+    OrderResponseDTO updateItemPhoto(String orderId, String itemId, String photoUrl);
+    OrderResponseDTO removeItemPhoto(String orderId, String itemId);
+    OrderResponseDTO updateOrderPhoto(String orderId, String photoUrl);
 }

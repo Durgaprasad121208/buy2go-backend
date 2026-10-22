@@ -14,6 +14,13 @@ public class ItemCustomizationDTO {
     private String variant;
     private String color;
     private String textToPrint;
-    private List<String> photos;
+    private String photo;         // Single photo URL stored in MinIO
     private String printNotes;
+
+    // Backward compatibility if array of photos was sent
+    public void setPhotos(List<String> photos) {
+        if (photos != null && !photos.isEmpty()) {
+            this.photo = photos.get(0);
+        }
+    }
 }

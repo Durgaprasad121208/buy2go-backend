@@ -12,6 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @EqualsAndHashCode(callSuper = true)
@@ -37,9 +38,11 @@ public class OrderEntity extends BaseEntity {
 
     private CustomerDetail customer;
     private List<OrderItemDetail> items = new ArrayList<>();
-    private List<String> additionalPhotos = new ArrayList<>();
-    private ShipmentDetail shipment = new ShipmentDetail();
+    
+    // Single order photo URL stored in MinIO for product printing
+    private String photo;
 
+    private ShipmentDetail shipment = new ShipmentDetail();
     private List<OrderStatusHistory> statusHistory = new ArrayList<>();
 
     @Data
@@ -59,12 +62,26 @@ public class OrderEntity extends BaseEntity {
         private String id;
         private String title;
         private String variant;       // e.g. "Clear", "Black"
-        private String color;         // explicit color choice
-        private String textToPrint;   // custom text to print on product (e.g. name, date)
+        private String color;         // explicit color selected
+        private String textToPrint;   // custom text to print on product
         private int quantity;
         private double price;
-        private List<String> photos = new ArrayList<>(); // Uploaded photo URLs from MinIO (JPG, PNG, PDF)
-        private String printNotes;    // optional instructions for printing/placement
+        
+        // Single photo URL stored in MinIO to be printed
+        private String photo;
+        
+        private String printNotes;    // instructions / placement notes
+
+        // Compatibility helpers
+        public List<String> getPhotos() {
+            return photo != null && !photo.isEmpty() ? List.of(photo) : Collections.emptyList();
+        }
+
+        public void setPhotos(List<String> photos) {
+            if (photos != null && !photos.isEmpty()) {
+                this.photo = photos.get(0);
+            }
+        }
     }
 
     @Data

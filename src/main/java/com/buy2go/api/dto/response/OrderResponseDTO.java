@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 
 @Data
@@ -26,10 +27,15 @@ public class OrderResponseDTO {
 
     private OrderEntity.CustomerDetail customer;
     private List<OrderEntity.OrderItemDetail> items;
-    private List<String> additionalPhotos;
+    private String photo; // Single photo URL stored in MinIO
     private OrderEntity.ShipmentDetail shipment;
     private List<OrderEntity.OrderStatusHistory> statusHistory;
 
     private Instant createdAt;
     private Instant updatedAt;
+
+    // Backward compatibility helper
+    public List<String> getAdditionalPhotos() {
+        return photo != null && !photo.isEmpty() ? List.of(photo) : Collections.emptyList();
+    }
 }
