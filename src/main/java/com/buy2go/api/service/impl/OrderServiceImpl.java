@@ -12,8 +12,11 @@ import com.buy2go.api.exception.ResourceNotFoundException;
 import com.buy2go.api.exception.SystemException;
 import com.buy2go.api.mapper.ModelMapper;
 import com.buy2go.api.repository.OrderRepository;
+import com.buy2go.api.repository.UserRepository;
 import com.buy2go.api.service.FileStorageService;
 import com.buy2go.api.service.OrderService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import com.buy2go.api.utils.DateUtil;
 import com.buy2go.api.utils.OrderNumberGenerator;
 import lombok.RequiredArgsConstructor;
@@ -39,15 +42,35 @@ import java.util.List;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
+    private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
 
     @Override
     public OrderResponseDTO createOrder(OrderRequestDTO request) {
         OrderEntity doc = new OrderEntity();
         doc.setOrderNumber(OrderNumberGenerator.generateOrderNumber());
-        doc.setCustomer(request.getCustomer());
-        doc.setCustomerName(request.getCustomer() != null ? request.getCustomer().getName() : "Customer");
-        doc.setLocation(request.getLocation() != null ? request.getLocation() : (request.getCustomer() != null ? request.getCustomer().getAddress() : ""));
+
+        OrderEntity.CustomerDetail customer = request.getCustomer() != null
+                ? request.getCustomer()
+                : new OrderEntity.CustomerDetail();
+        if (customer.getEmail() == null || customer.getEmail().trim().isEmpty()) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+                String authEmail = auth.getName();
+                customer.setEmail(authEmail);
+                userRepository.findByEmailAndIsDeletedFalse(authEmail).ifPresent(u -> {
+                    if (customer.getPhone() == null || customer.getPhone().trim().isEmpty()) {
+                        customer.setPhone(u.getPhone());
+                    }
+                    if (customer.getName() == null || customer.getName().trim().isEmpty() || "Customer".equals(customer.getName())) {
+                        customer.setName((u.getFirstName() + " " + (u.getLastName() != null ? u.getLastName() : "")).trim());
+                    }
+                });
+            }
+        }
+        doc.setCustomer(customer);
+        doc.setCustomerName(customer.getName() != null && !customer.getName().trim().isEmpty() ? customer.getName() : "Customer");
+        doc.setLocation(request.getLocation() != null ? request.getLocation() : (customer.getAddress() != null ? customer.getAddress() : ""));
 
         List<OrderEntity.OrderItemDetail> items = request.getItems() != null ? request.getItems() : new ArrayList<>();
         int itemIndex = 1;
@@ -413,19 +436,30 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<OrderResponseDTO> getOrdersByCustomer(String email, String phone) {
+        String cleanEmail = email != null && !email.trim().isEmpty() ? email.trim() : null;
+        String cleanPhone = phone != null && !phone.trim().isEmpty() ? phone.trim() : null;
+
+        // If email is provided but not phone, look up user profile to also check orders placed by their registered phone
+        if (cleanEmail != null && cleanPhone == null) {
+            cleanPhone = userRepository.findByEmailAndIsDeletedFalse(cleanEmail)
+                    .map(com.buy2go.api.entity.UserEntity::getPhone)
+                    .filter(p -> p != null && !p.trim().isEmpty())
+                    .orElse(null);
+        }
+
         List<OrderEntity> orders;
-        if (email != null && !email.trim().isEmpty() && phone != null && !phone.trim().isEmpty()) {
-            orders = orderRepository.findByCustomerIdentifier(email.trim());
-            List<OrderEntity> phoneOrders = orderRepository.findByCustomerPhone(phone.trim());
+        if (cleanEmail != null && cleanPhone != null) {
+            orders = new ArrayList<>(orderRepository.findByCustomerIdentifier(cleanEmail));
+            List<OrderEntity> phoneOrders = orderRepository.findByCustomerPhone(cleanPhone);
             for (OrderEntity po : phoneOrders) {
                 if (orders.stream().noneMatch(o -> o.getId().equals(po.getId()))) {
                     orders.add(po);
                 }
             }
-        } else if (email != null && !email.trim().isEmpty()) {
-            orders = orderRepository.findByCustomerEmail(email.trim());
-        } else if (phone != null && !phone.trim().isEmpty()) {
-            orders = orderRepository.findByCustomerPhone(phone.trim());
+        } else if (cleanEmail != null) {
+            orders = orderRepository.findByCustomerEmail(cleanEmail);
+        } else if (cleanPhone != null) {
+            orders = orderRepository.findByCustomerPhone(cleanPhone);
         } else {
             return Collections.emptyList();
         }

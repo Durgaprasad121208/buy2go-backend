@@ -150,7 +150,15 @@ public class OrderController {
 
     @PostMapping("/create")
     @Operation(summary = "Place a new customer order with customized product photo and text to print")
-    public ResponseEntity<ApiResponse<OrderResponseDTO>> createOrder(@RequestBody OrderRequestDTO request) {
+    public ResponseEntity<ApiResponse<OrderResponseDTO>> createOrder(
+            @RequestBody OrderRequestDTO request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (request.getCustomer() == null) {
+            request.setCustomer(new OrderEntity.CustomerDetail());
+        }
+        if ((request.getCustomer().getEmail() == null || request.getCustomer().getEmail().trim().isEmpty()) && userDetails != null) {
+            request.getCustomer().setEmail(userDetails.getUsername());
+        }
         OrderResponseDTO response = orderService.createOrder(request);
         return ResponseEntity.ok(ApiResponse.success("Order placed successfully", response));
     }
