@@ -23,7 +23,6 @@ import java.util.List;
 public class UserAuthEntity extends BaseEntity implements UserDetails {
 
     @Id
-    @Field("_id")
     private String id;
 
     @Indexed(unique = true)

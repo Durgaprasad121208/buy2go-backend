@@ -60,6 +60,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductResponseDTO getProductById(String id) {
         ProductEntity doc = productRepository.findByIdAndIsDeletedFalse(id)
+                .or(() -> productRepository.findBySlugAndIsDeletedFalse(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with ID: " + id));
         return ModelMapper.toProductResponse(doc);
     }

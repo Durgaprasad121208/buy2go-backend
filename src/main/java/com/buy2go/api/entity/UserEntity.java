@@ -17,7 +17,6 @@ import org.springframework.data.mongodb.core.mapping.Field;
 public class UserEntity extends BaseEntity {
 
     @Id
-    @Field("_id")
     private String id;
 
     private String firstName;

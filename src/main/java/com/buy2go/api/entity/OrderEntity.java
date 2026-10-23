@@ -23,7 +23,6 @@ import java.util.List;
 public class OrderEntity extends BaseEntity {
 
     @Id
-    @Field("_id")
     private String id;
 
     @Indexed(unique = true)
