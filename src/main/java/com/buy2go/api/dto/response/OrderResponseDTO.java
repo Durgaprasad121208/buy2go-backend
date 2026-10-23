@@ -27,7 +27,8 @@ public class OrderResponseDTO {
 
     private OrderEntity.CustomerDetail customer;
     private List<OrderEntity.OrderItemDetail> items;
-    private String photo; // Single photo URL stored in MinIO
+    private String photo; // Primary photo URL stored in MinIO
+    private List<String> photos; // All photo URLs stored in MinIO
     private OrderEntity.ShipmentDetail shipment;
     private List<OrderEntity.OrderStatusHistory> statusHistory;
 
@@ -36,6 +37,7 @@ public class OrderResponseDTO {
 
     // Backward compatibility helper
     public List<String> getAdditionalPhotos() {
+        if (photos != null && !photos.isEmpty()) return photos;
         return photo != null && !photo.isEmpty() ? List.of(photo) : Collections.emptyList();
     }
 }

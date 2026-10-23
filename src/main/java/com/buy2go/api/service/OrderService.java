@@ -24,8 +24,12 @@ public interface OrderService {
     OrderResponseDTO cancelOrder(String id, String remarks, String username);
     ByteArrayInputStream downloadOrdersExcel(OrderStatus status);
 
-    // Upload single photo to MinIO for product printing - returns MinIO URL only
+    // Upload single or multiple photos to MinIO for product printing
     String uploadOrderPhoto(MultipartFile file);
+    List<String> uploadOrderPhotos(List<MultipartFile> files);
+
+    // Download photo stream from MinIO for admin or customer
+    java.io.InputStream downloadPhoto(String urlOrObjectName);
 
     // Edit and update photo / textToPrint / color customization on an order item
     OrderResponseDTO updateItemCustomization(String orderId, String itemId, ItemCustomizationDTO customization);

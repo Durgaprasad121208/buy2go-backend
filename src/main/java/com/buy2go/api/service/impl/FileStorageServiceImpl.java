@@ -106,8 +106,19 @@ public class FileStorageServiceImpl implements FileStorageService {
     }
 
     @Override
-    public InputStream downloadFile(String objectName) {
+    public InputStream downloadFile(String fileUrlOrObjectName) {
+        if (fileUrlOrObjectName == null || fileUrlOrObjectName.trim().isEmpty()) {
+            throw new SystemException("File URL or object name cannot be empty");
+        }
         try {
+            String objectName = fileUrlOrObjectName.trim();
+            String prefix = minioUrl.replaceAll("/+$", "") + "/" + bucket + "/";
+            if (objectName.startsWith(prefix)) {
+                objectName = objectName.substring(prefix.length());
+            } else if (objectName.startsWith(bucket + "/")) {
+                objectName = objectName.substring(bucket.length() + 1);
+            }
+
             return minioClient.getObject(
                     GetObjectArgs.builder()
                             .bucket(bucket)
@@ -115,7 +126,7 @@ public class FileStorageServiceImpl implements FileStorageService {
                             .build()
             );
         } catch (Exception ex) {
-            log.error("Failed to download file '{}' from MinIO: {}", objectName, ex.getMessage(), ex);
+            log.error("Failed to download file '{}' from MinIO: {}", fileUrlOrObjectName, ex.getMessage(), ex);
             throw new SystemException("Could not download file from MinIO: " + ex.getMessage());
         }
     }

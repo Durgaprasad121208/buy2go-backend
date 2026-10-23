@@ -38,8 +38,23 @@ public class OrderEntity extends BaseEntity {
     private CustomerDetail customer;
     private List<OrderItemDetail> items = new ArrayList<>();
     
-    // Single order photo URL stored in MinIO for product printing
+    // Primary order photo URL stored in MinIO for product printing
     private String photo;
+    private List<String> photos = new ArrayList<>();
+
+    public List<String> getPhotos() {
+        if (photos != null && !photos.isEmpty()) {
+            return photos;
+        }
+        return photo != null && !photo.isEmpty() ? List.of(photo) : Collections.emptyList();
+    }
+
+    public void setPhotos(List<String> photos) {
+        this.photos = photos != null ? new ArrayList<>(photos) : new ArrayList<>();
+        if ((this.photo == null || this.photo.isEmpty()) && !this.photos.isEmpty()) {
+            this.photo = this.photos.get(0);
+        }
+    }
 
     private ShipmentDetail shipment = new ShipmentDetail();
     private List<OrderStatusHistory> statusHistory = new ArrayList<>();
@@ -59,6 +74,7 @@ public class OrderEntity extends BaseEntity {
     @NoArgsConstructor
     public static class OrderItemDetail {
         private String id;
+        private String productId;
         private String title;
         private String variant;       // e.g. "Clear", "Black"
         private String color;         // explicit color selected
@@ -66,19 +82,24 @@ public class OrderEntity extends BaseEntity {
         private int quantity;
         private double price;
         
-        // Single photo URL stored in MinIO to be printed
+        // Primary photo URL stored in MinIO to be printed
         private String photo;
+        private List<String> photos = new ArrayList<>();
         
         private String printNotes;    // instructions / placement notes
 
         // Compatibility helpers
         public List<String> getPhotos() {
+            if (photos != null && !photos.isEmpty()) {
+                return photos;
+            }
             return photo != null && !photo.isEmpty() ? List.of(photo) : Collections.emptyList();
         }
 
         public void setPhotos(List<String> photos) {
-            if (photos != null && !photos.isEmpty()) {
-                this.photo = photos.get(0);
+            this.photos = photos != null ? new ArrayList<>(photos) : new ArrayList<>();
+            if ((this.photo == null || this.photo.isEmpty()) && !this.photos.isEmpty()) {
+                this.photo = this.photos.get(0);
             }
         }
     }

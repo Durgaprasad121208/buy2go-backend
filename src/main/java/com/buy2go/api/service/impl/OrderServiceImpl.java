@@ -58,12 +58,43 @@ public class OrderServiceImpl implements OrderService {
         }
         doc.setItems(items);
 
-        // Single photo for the order (from request.getPhoto() or first item's photo)
+        // Synchronize photos list and primary photo for each item
+        for (OrderEntity.OrderItemDetail item : items) {
+            if ((item.getPhoto() == null || item.getPhoto().isEmpty()) && item.getPhotos() != null && !item.getPhotos().isEmpty()) {
+                item.setPhoto(item.getPhotos().get(0));
+            } else if (item.getPhoto() != null && !item.getPhoto().isEmpty() && (item.getPhotos() == null || item.getPhotos().isEmpty())) {
+                item.setPhotos(new ArrayList<>(List.of(item.getPhoto())));
+            }
+        }
+
+        // Synchronize order-level photos
+        List<String> orderPhotos = request.getPhotos() != null ? new ArrayList<>(request.getPhotos()) : new ArrayList<>();
         String orderPhoto = request.getPhoto();
-        if ((orderPhoto == null || orderPhoto.isEmpty()) && !items.isEmpty() && items.get(0).getPhoto() != null) {
-            orderPhoto = items.get(0).getPhoto();
+        if ((orderPhoto == null || orderPhoto.isEmpty()) && !orderPhotos.isEmpty()) {
+            orderPhoto = orderPhotos.get(0);
+        }
+        if (orderPhoto == null || orderPhoto.isEmpty()) {
+            for (OrderEntity.OrderItemDetail item : items) {
+                if (item.getPhoto() != null && !item.getPhoto().isEmpty()) {
+                    orderPhoto = item.getPhoto();
+                    break;
+                }
+            }
+        }
+        if (orderPhotos.isEmpty()) {
+            for (OrderEntity.OrderItemDetail item : items) {
+                if (item.getPhotos() != null && !item.getPhotos().isEmpty()) {
+                    orderPhotos.addAll(item.getPhotos());
+                } else if (item.getPhoto() != null && !item.getPhoto().isEmpty()) {
+                    orderPhotos.add(item.getPhoto());
+                }
+            }
+        }
+        if (orderPhoto != null && !orderPhotos.contains(orderPhoto)) {
+            orderPhotos.add(0, orderPhoto);
         }
         doc.setPhoto(orderPhoto);
+        doc.setPhotos(orderPhotos);
 
         doc.setItemCount(doc.getItems().stream().mapToInt(OrderEntity.OrderItemDetail::getQuantity).sum());
         doc.setTotalAmount(request.getTotalAmount());
@@ -193,6 +224,25 @@ public class OrderServiceImpl implements OrderService {
             throw new SystemException("Uploaded file cannot be empty");
         }
         return fileStorageService.storeFile(file, "orders/photos");
+    }
+
+    @Override
+    public List<String> uploadOrderPhotos(List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> urls = new ArrayList<>();
+        for (MultipartFile f : files) {
+            if (f != null && !f.isEmpty()) {
+                urls.add(fileStorageService.storeFile(f, "orders/photos"));
+            }
+        }
+        return urls;
+    }
+
+    @Override
+    public java.io.InputStream downloadPhoto(String urlOrObjectName) {
+        return fileStorageService.downloadFile(urlOrObjectName);
     }
 
     @Override

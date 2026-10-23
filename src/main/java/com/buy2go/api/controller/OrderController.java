@@ -44,6 +44,75 @@ public class OrderController {
         return ResponseEntity.ok(url);
     }
 
+    @PostMapping(value = "/upload-photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload multiple photos to MinIO for product printing - returns list of MinIO URL strings")
+    public ResponseEntity<ApiResponse<List<String>>> uploadPhotos(@RequestParam("files") List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Files are required", 400));
+        }
+        List<String> urls = orderService.uploadOrderPhotos(files);
+        return ResponseEntity.ok(ApiResponse.success("Photos uploaded successfully", urls));
+    }
+
+    @GetMapping("/download-photo")
+    @Operation(summary = "Download any order photo from MinIO with direct attachment stream (Admin/Staff/Public)")
+    public ResponseEntity<InputStreamResource> downloadPhotoByUrl(@RequestParam String url) {
+        if (url == null || url.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        java.io.InputStream is = orderService.downloadPhoto(url);
+        String filename = "order-photo-" + System.currentTimeMillis();
+        int slashIndex = url.lastIndexOf('/');
+        if (slashIndex >= 0 && slashIndex < url.length() - 1) {
+            filename = url.substring(slashIndex + 1);
+        }
+        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        String lower = filename.toLowerCase();
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
+            mediaType = MediaType.IMAGE_JPEG;
+        } else if (lower.endsWith(".png")) {
+            mediaType = MediaType.IMAGE_PNG;
+        } else if (lower.endsWith(".pdf")) {
+            mediaType = MediaType.APPLICATION_PDF;
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentType(mediaType)
+                .body(new InputStreamResource(is));
+    }
+
+    @GetMapping("/{id}/download-photo")
+    @Operation(summary = "Download primary photo for order")
+    public ResponseEntity<InputStreamResource> downloadOrderPhoto(@PathVariable String id) {
+        OrderResponseDTO order = orderService.getOrderById(id);
+        String photoUrl = order.getPhoto();
+        if ((photoUrl == null || photoUrl.isEmpty()) && order.getItems() != null && !order.getItems().isEmpty()) {
+            photoUrl = order.getItems().get(0).getPhoto();
+        }
+        if (photoUrl == null || photoUrl.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return downloadPhotoByUrl(photoUrl);
+    }
+
+    @GetMapping("/{id}/items/{itemId}/download-photo")
+    @Operation(summary = "Download customized photo for specific order item")
+    public ResponseEntity<InputStreamResource> downloadOrderItemPhoto(@PathVariable String id, @PathVariable String itemId) {
+        OrderResponseDTO order = orderService.getOrderById(id);
+        OrderEntity.OrderItemDetail item = order.getItems().stream()
+                .filter(i -> itemId.equalsIgnoreCase(i.getId()))
+                .findFirst()
+                .orElse(null);
+        if (item == null || item.getPhoto() == null || item.getPhoto().isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return downloadPhotoByUrl(item.getPhoto());
+    }
+
     @PostMapping("/create")
     @Operation(summary = "Place a new customer order with customized product photo and text to print")
     public ResponseEntity<ApiResponse<OrderResponseDTO>> createOrder(@RequestBody OrderRequestDTO request) {
