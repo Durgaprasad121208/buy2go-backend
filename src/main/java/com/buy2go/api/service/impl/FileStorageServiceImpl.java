@@ -8,6 +8,8 @@ import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
+import io.minio.SetBucketPolicyArgs;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +36,52 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     @Value("${minio.source-folder:buy2go/}")
     private String sourceFolder;
+
+    @PostConstruct
+    public void init() {
+        ensureBucketPublicPolicy(bucket);
+    }
+
+    public void ensureBucketPublicPolicy(String bucketName) {
+        if (bucketName == null || bucketName.trim().isEmpty()) return;
+        try {
+            boolean isExist = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
+            if (!isExist) {
+                log.info("Bucket '{}' does not exist. Creating bucket...", bucketName);
+                minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
+            }
+
+            String policy = """
+                    {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Principal": {"AWS": ["*"]},
+                                "Action": ["s3:GetBucketLocation", "s3:ListBucket"],
+                                "Resource": ["arn:aws:s3:::%s"]
+                            },
+                            {
+                                "Effect": "Allow",
+                                "Principal": {"AWS": ["*"]},
+                                "Action": ["s3:GetObject"],
+                                "Resource": ["arn:aws:s3:::%s/*"]
+                            }
+                        ]
+                    }
+                    """.formatted(bucketName, bucketName);
+
+            minioClient.setBucketPolicy(
+                    SetBucketPolicyArgs.builder()
+                            .bucket(bucketName)
+                            .config(policy)
+                            .build()
+            );
+            log.info("Public read policy configured on bucket '{}'", bucketName);
+        } catch (Exception e) {
+            log.warn("Could not set public policy on bucket '{}': {}", bucketName, e.getMessage());
+        }
+    }
 
     @Override
     public String storeFile(MultipartFile file) {
@@ -64,13 +112,16 @@ public class FileStorageServiceImpl implements FileStorageService {
 
             String newFileName = UUID.randomUUID() + fileExtension;
 
-            // Normalize folder path
-            String folder = sourceFolder != null ? sourceFolder.trim() : "buy2go/";
-            if (!folder.endsWith("/")) {
-                folder = folder + "/";
+            // Normalize folder path without duplicating bucket name
+            String folder = sourceFolder != null ? sourceFolder.trim() : "";
+            if (bucket != null && bucket.equalsIgnoreCase("buy2go") && folder.toLowerCase().startsWith("buy2go")) {
+                folder = folder.substring("buy2go".length());
             }
             if (folder.startsWith("/")) {
                 folder = folder.substring(1);
+            }
+            if (!folder.isEmpty() && !folder.endsWith("/")) {
+                folder = folder + "/";
             }
 
             if (subFolder != null && !subFolder.trim().isEmpty()) {
