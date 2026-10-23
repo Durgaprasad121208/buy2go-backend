@@ -63,6 +63,7 @@ public class ModelMapper {
                 .customer(doc.getCustomer())
                 .items(doc.getItems())
                 .photo(doc.getPhoto())
+                .photoId(doc.getPhotoId())
                 .photos(doc.getPhotos())
                 .shipment(doc.getShipment())
                 .statusHistory(doc.getStatusHistory())

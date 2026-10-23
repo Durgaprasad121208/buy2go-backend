@@ -246,6 +246,93 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    public String resolvePhotoUrl(String idOrUrl) {
+        if (idOrUrl == null || idOrUrl.trim().isEmpty()) {
+            return null;
+        }
+        String clean = idOrUrl.trim();
+        if (clean.startsWith("http://") || clean.startsWith("https://")) {
+            return clean;
+        }
+
+        try {
+            OrderEntity order = findOrder(clean);
+            if (order != null) {
+                if (order.getPhoto() != null && !order.getPhoto().isEmpty()) {
+                    return order.getPhoto();
+                }
+                if (order.getItems() != null) {
+                    for (OrderEntity.OrderItemDetail it : order.getItems()) {
+                        if (it.getPhoto() != null && !it.getPhoto().isEmpty()) {
+                            return it.getPhoto();
+                        }
+                    }
+                }
+                if (order.getPhotos() != null && !order.getPhotos().isEmpty()) {
+                    return order.getPhotos().get(0);
+                }
+            }
+        } catch (Exception ignored) {}
+
+        List<OrderEntity> allOrders = orderRepository.findByIsDeletedFalse(PageRequest.of(0, 1000)).getContent();
+        for (OrderEntity ord : allOrders) {
+            if (ord.getItems() != null) {
+                for (OrderEntity.OrderItemDetail it : ord.getItems()) {
+                    if (clean.equalsIgnoreCase(it.getId()) || clean.equalsIgnoreCase(it.getPhotoId())) {
+                        if (it.getPhoto() != null && !it.getPhoto().isEmpty()) {
+                            return it.getPhoto();
+                        }
+                    }
+                    if (it.getPhoto() != null && it.getPhoto().toLowerCase().contains(clean.toLowerCase())) {
+                        return it.getPhoto();
+                    }
+                }
+            }
+            if (ord.getPhoto() != null && ord.getPhoto().toLowerCase().contains(clean.toLowerCase())) {
+                return ord.getPhoto();
+            }
+        }
+
+        return clean;
+    }
+
+    @Override
+    public com.buy2go.api.dto.response.PhotoDetailsDTO getPhotoDetails(String idOrUrl) {
+        if (idOrUrl == null || idOrUrl.trim().isEmpty()) {
+            throw new ResourceNotFoundException("ID or URL cannot be empty");
+        }
+        String clean = idOrUrl.trim();
+
+        try {
+            OrderEntity order = findOrder(clean);
+            if (order != null) {
+                String photoUrl = order.getPhoto();
+                if ((photoUrl == null || photoUrl.isEmpty()) && order.getItems() != null && !order.getItems().isEmpty()) {
+                    photoUrl = order.getItems().get(0).getPhoto();
+                }
+                return com.buy2go.api.dto.response.PhotoDetailsDTO.builder()
+                        .id(order.getId())
+                        .orderNumber(order.getOrderNumber())
+                        .photoId(order.getPhotoId() != null ? order.getPhotoId() : OrderEntity.extractPhotoId(photoUrl))
+                        .photoUrl(photoUrl)
+                        .photos(order.getPhotos() != null ? order.getPhotos() : (photoUrl != null ? List.of(photoUrl) : Collections.emptyList()))
+                        .build();
+            }
+        } catch (Exception ignored) {}
+
+        String resolvedUrl = resolvePhotoUrl(clean);
+        String photoId = OrderEntity.extractPhotoId(resolvedUrl != null ? resolvedUrl : clean);
+
+        return com.buy2go.api.dto.response.PhotoDetailsDTO.builder()
+                .id(clean)
+                .orderNumber(clean.startsWith("#") ? clean : null)
+                .photoId(photoId)
+                .photoUrl(resolvedUrl)
+                .photos(resolvedUrl != null ? List.of(resolvedUrl) : Collections.emptyList())
+                .build();
+    }
+
+    @Override
     public OrderResponseDTO updateItemCustomization(String orderId, String itemId, ItemCustomizationDTO customization) {
         OrderEntity doc = findOrder(orderId);
 
@@ -358,8 +445,17 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderEntity findOrder(String idOrOrderNumber) {
-        return orderRepository.findByIdAndIsDeletedFalse(idOrOrderNumber)
-                .or(() -> orderRepository.findByOrderNumberAndIsDeletedFalse(idOrOrderNumber))
+        if (idOrOrderNumber == null || idOrOrderNumber.trim().isEmpty()) {
+            throw new ResourceNotFoundException("Order ID or number cannot be empty");
+        }
+        String clean = idOrOrderNumber.trim();
+        String withHash = clean.startsWith("#") ? clean : "#" + clean;
+        String withoutHash = clean.startsWith("#") ? clean.substring(1) : clean;
+
+        return orderRepository.findByIdAndIsDeletedFalse(clean)
+                .or(() -> orderRepository.findByOrderNumberIgnoreCaseAndIsDeletedFalse(clean))
+                .or(() -> orderRepository.findByOrderNumberIgnoreCaseAndIsDeletedFalse(withHash))
+                .or(() -> orderRepository.findByOrderNumberIgnoreCaseAndIsDeletedFalse(withoutHash))
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID/number: " + idOrOrderNumber));
     }
 

@@ -28,7 +28,13 @@ public class OrderResponseDTO {
     private OrderEntity.CustomerDetail customer;
     private List<OrderEntity.OrderItemDetail> items;
     private String photo; // Primary photo URL stored in MinIO
+    private String photoId;
     private List<String> photos; // All photo URLs stored in MinIO
+
+    public String getPhotoId() {
+        if (photoId != null && !photoId.isEmpty()) return photoId;
+        return OrderEntity.extractPhotoId(photo);
+    }
     private OrderEntity.ShipmentDetail shipment;
     private List<OrderEntity.OrderStatusHistory> statusHistory;
 

@@ -17,6 +17,7 @@ public interface OrderRepository extends MongoRepository<OrderEntity, String> {
 
     Optional<OrderEntity> findByIdAndIsDeletedFalse(String id);
     Optional<OrderEntity> findByOrderNumberAndIsDeletedFalse(String orderNumber);
+    Optional<OrderEntity> findByOrderNumberIgnoreCaseAndIsDeletedFalse(String orderNumber);
 
     Page<OrderEntity> findByIsDeletedFalse(Pageable pageable);
     Page<OrderEntity> findByStatusAndIsDeletedFalse(OrderStatus status, Pageable pageable);

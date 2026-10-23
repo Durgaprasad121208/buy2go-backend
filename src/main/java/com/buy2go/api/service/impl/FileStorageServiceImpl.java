@@ -111,20 +111,89 @@ public class FileStorageServiceImpl implements FileStorageService {
             throw new SystemException("File URL or object name cannot be empty");
         }
         try {
-            String objectName = fileUrlOrObjectName.trim();
-            String prefix = minioUrl.replaceAll("/+$", "") + "/" + bucket + "/";
-            if (objectName.startsWith(prefix)) {
-                objectName = objectName.substring(prefix.length());
-            } else if (objectName.startsWith(bucket + "/")) {
-                objectName = objectName.substring(bucket.length() + 1);
+            String raw = fileUrlOrObjectName.trim();
+            String targetBucket = this.bucket;
+            String objectName = raw;
+
+            if (raw.startsWith("http://") || raw.startsWith("https://")) {
+                try {
+                    java.net.URI uri = java.net.URI.create(raw);
+                    String path = uri.getPath();
+                    if (path.startsWith("/")) path = path.substring(1);
+                    int slashIndex = path.indexOf('/');
+                    if (slashIndex > 0) {
+                        targetBucket = path.substring(0, slashIndex);
+                        objectName = path.substring(slashIndex + 1);
+                    } else {
+                        objectName = path;
+                    }
+                } catch (Exception e) {
+                    String baseUrl = minioUrl.replaceAll("/+$", "");
+                    if (objectName.startsWith(baseUrl + "/")) {
+                        String path = objectName.substring(baseUrl.length() + 1);
+                        int slashIndex = path.indexOf('/');
+                        if (slashIndex > 0) {
+                            targetBucket = path.substring(0, slashIndex);
+                            objectName = path.substring(slashIndex + 1);
+                        } else {
+                            objectName = path;
+                        }
+                    }
+                }
+            } else {
+                if (objectName.startsWith(targetBucket + "/")) {
+                    objectName = objectName.substring(targetBucket.length() + 1);
+                } else if (objectName.startsWith("enggis/")) {
+                    targetBucket = "enggis";
+                    objectName = objectName.substring("enggis/".length());
+                } else if (objectName.startsWith("buy2go/")) {
+                    targetBucket = "buy2go";
+                    objectName = objectName.substring("buy2go/".length());
+                }
             }
 
-            return minioClient.getObject(
-                    GetObjectArgs.builder()
-                            .bucket(bucket)
-                            .object(objectName)
-                            .build()
-            );
+            try {
+                return minioClient.getObject(
+                        GetObjectArgs.builder()
+                                .bucket(targetBucket)
+                                .object(objectName)
+                                .build()
+                );
+            } catch (Exception ex) {
+                // Try fallback bucket if file was stored in enggis or buy2go previously
+                String fallbackBucket = "buy2go".equalsIgnoreCase(targetBucket) ? "enggis" : "buy2go";
+                try {
+                    return minioClient.getObject(
+                            GetObjectArgs.builder()
+                                    .bucket(fallbackBucket)
+                                    .object(objectName)
+                                    .build()
+                    );
+                } catch (Exception ignored) {
+                    String folder = sourceFolder != null ? sourceFolder.trim() : "buy2go/";
+                    if (!folder.endsWith("/")) folder += "/";
+                    if (folder.startsWith("/")) folder = folder.substring(1);
+                    if (!objectName.startsWith(folder)) {
+                        try {
+                            return minioClient.getObject(
+                                    GetObjectArgs.builder()
+                                            .bucket(targetBucket)
+                                            .object(folder + objectName)
+                                            .build()
+                            );
+                        } catch (Exception ignored2) {}
+                        try {
+                            return minioClient.getObject(
+                                    GetObjectArgs.builder()
+                                            .bucket(fallbackBucket)
+                                            .object(folder + objectName)
+                                            .build()
+                            );
+                        } catch (Exception ignored3) {}
+                    }
+                    throw ex;
+                }
+            }
         } catch (Exception ex) {
             log.error("Failed to download file '{}' from MinIO: {}", fileUrlOrObjectName, ex.getMessage(), ex);
             throw new SystemException("Could not download file from MinIO: " + ex.getMessage());

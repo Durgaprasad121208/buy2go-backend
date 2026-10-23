@@ -69,6 +69,19 @@ public class OrderEntity extends BaseEntity {
         private String address;
     }
 
+    public static String extractPhotoId(String url) {
+        if (url == null || url.trim().isEmpty()) return null;
+        String trimmed = url.trim();
+        int slash = trimmed.lastIndexOf('/');
+        String filename = slash >= 0 ? trimmed.substring(slash + 1) : trimmed;
+        int dot = filename.lastIndexOf('.');
+        return dot > 0 ? filename.substring(0, dot) : filename;
+    }
+
+    public String getPhotoId() {
+        return extractPhotoId(this.photo);
+    }
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
@@ -84,9 +97,15 @@ public class OrderEntity extends BaseEntity {
         
         // Primary photo URL stored in MinIO to be printed
         private String photo;
+        private String photoId;
         private List<String> photos = new ArrayList<>();
         
         private String printNotes;    // instructions / placement notes
+
+        public String getPhotoId() {
+            if (photoId != null && !photoId.isEmpty()) return photoId;
+            return extractPhotoId(photo);
+        }
 
         // Compatibility helpers
         public List<String> getPhotos() {
@@ -100,6 +119,9 @@ public class OrderEntity extends BaseEntity {
             this.photos = photos != null ? new ArrayList<>(photos) : new ArrayList<>();
             if ((this.photo == null || this.photo.isEmpty()) && !this.photos.isEmpty()) {
                 this.photo = this.photos.get(0);
+            }
+            if (this.photoId == null && this.photo != null) {
+                this.photoId = extractPhotoId(this.photo);
             }
         }
     }

@@ -30,6 +30,8 @@ public interface OrderService {
 
     // Download photo stream from MinIO for admin or customer
     java.io.InputStream downloadPhoto(String urlOrObjectName);
+    String resolvePhotoUrl(String idOrUrl);
+    com.buy2go.api.dto.response.PhotoDetailsDTO getPhotoDetails(String idOrUrl);
 
     // Edit and update photo / textToPrint / color customization on an order item
     OrderResponseDTO updateItemCustomization(String orderId, String itemId, ItemCustomizationDTO customization);

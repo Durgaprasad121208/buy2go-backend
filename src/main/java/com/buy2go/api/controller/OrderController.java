@@ -8,9 +8,12 @@ import com.buy2go.api.dto.request.OrderRequestDTO;
 import com.buy2go.api.dto.request.OrderStatusUpdateDTO;
 import com.buy2go.api.dto.request.ShipmentUpdateDTO;
 import com.buy2go.api.dto.response.OrderResponseDTO;
+import com.buy2go.api.dto.response.PhotoDetailsDTO;
+import com.buy2go.api.entity.OrderEntity;
 import com.buy2go.api.enums.OrderStatus;
 import com.buy2go.api.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
@@ -48,23 +51,34 @@ public class OrderController {
     @Operation(summary = "Upload multiple photos to MinIO for product printing - returns list of MinIO URL strings")
     public ResponseEntity<ApiResponse<List<String>>> uploadPhotos(@RequestParam("files") List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Files are required", 400));
+            return ResponseEntity.badRequest().body(ApiResponse.error("Files are required"));
         }
         List<String> urls = orderService.uploadOrderPhotos(files);
         return ResponseEntity.ok(ApiResponse.success("Photos uploaded successfully", urls));
     }
 
     @GetMapping("/download-photo")
-    @Operation(summary = "Download any order photo from MinIO with direct attachment stream (Admin/Staff/Public)")
-    public ResponseEntity<InputStreamResource> downloadPhotoByUrl(@RequestParam String url) {
-        if (url == null || url.trim().isEmpty()) {
+    @Operation(summary = "Download any order photo from MinIO by Order ID/number, Item ID, Photo ID, or direct URL")
+    public ResponseEntity<InputStreamResource> downloadPhotoByUrl(
+            @Parameter(description = "Order ID or order number (e.g. 418b00b3 or #418b00b3), item ID, or photo ID")
+            @RequestParam(required = false) String id,
+            @Parameter(description = "Direct MinIO photo URL or object key")
+            @RequestParam(required = false) String url) {
+        String target = (id != null && !id.trim().isEmpty()) ? id.trim() : (url != null ? url.trim() : null);
+        if (target == null || target.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
-        java.io.InputStream is = orderService.downloadPhoto(url);
+
+        String resolvedPhotoUrl = orderService.resolvePhotoUrl(target);
+        if (resolvedPhotoUrl == null || resolvedPhotoUrl.trim().isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        java.io.InputStream is = orderService.downloadPhoto(resolvedPhotoUrl);
         String filename = "order-photo-" + System.currentTimeMillis();
-        int slashIndex = url.lastIndexOf('/');
-        if (slashIndex >= 0 && slashIndex < url.length() - 1) {
-            filename = url.substring(slashIndex + 1);
+        int slashIndex = resolvedPhotoUrl.lastIndexOf('/');
+        if (slashIndex >= 0 && slashIndex < resolvedPhotoUrl.length() - 1) {
+            filename = resolvedPhotoUrl.substring(slashIndex + 1);
         }
         MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
         String lower = filename.toLowerCase();
@@ -72,6 +86,8 @@ public class OrderController {
             mediaType = MediaType.IMAGE_JPEG;
         } else if (lower.endsWith(".png")) {
             mediaType = MediaType.IMAGE_PNG;
+        } else if (lower.endsWith(".webp")) {
+            mediaType = MediaType.parseMediaType("image/webp");
         } else if (lower.endsWith(".pdf")) {
             mediaType = MediaType.APPLICATION_PDF;
         }
@@ -83,6 +99,25 @@ public class OrderController {
                 .headers(headers)
                 .contentType(mediaType)
                 .body(new InputStreamResource(is));
+    }
+
+    public ResponseEntity<InputStreamResource> downloadPhotoByUrl(String url) {
+        return downloadPhotoByUrl(null, url);
+    }
+
+    @GetMapping("/photo-url")
+    @Operation(summary = "Get MinIO photo URL and details by Order ID/number, item ID, or photo ID")
+    public ResponseEntity<ApiResponse<PhotoDetailsDTO>> getPhotoUrl(
+            @Parameter(description = "Order ID/number (e.g. 418b00b3 or #418b00b3), item ID, or photo ID")
+            @RequestParam(required = false) String id,
+            @Parameter(description = "Direct MinIO photo URL")
+            @RequestParam(required = false) String url) {
+        String target = (id != null && !id.trim().isEmpty()) ? id.trim() : (url != null ? url.trim() : null);
+        if (target == null || target.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Either id or url is required"));
+        }
+        PhotoDetailsDTO details = orderService.getPhotoDetails(target);
+        return ResponseEntity.ok(ApiResponse.success(details));
     }
 
     @GetMapping("/{id}/download-photo")
