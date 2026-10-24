@@ -17,6 +17,21 @@ spring:
   threads:
     virtual:
       enabled: true
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:pawanfullstack@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:lyvuhavxjvghzqwf}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
 
 buy2go:
   app:
@@ -24,6 +39,11 @@ buy2go:
     jwtExpirationMs: 86400000        # 24 hours
     jwtRefreshExpirationMs: 604800000 # 7 days
     uploadDir: static/uploads
+  mail:
+    from: ${BUY2GO_MAIL_FROM:pawanfullstack@gmail.com}
+    sender-name: ${BUY2GO_MAIL_SENDER:BUY2GO.IN}
+    frontend-base-url: ${BUY2GO_FRONTEND_URL:http://localhost:3000}
+    support-email: ${BUY2GO_SUPPORT_EMAIL:support@buy2go.in}
 
 minio:
   url: ${MINIO_URL:https://data.planifier.app}

@@ -13,6 +13,7 @@ import com.buy2go.api.exception.SystemException;
 import com.buy2go.api.mapper.ModelMapper;
 import com.buy2go.api.repository.OrderRepository;
 import com.buy2go.api.repository.UserRepository;
+import com.buy2go.api.service.EmailService;
 import com.buy2go.api.service.FileStorageService;
 import com.buy2go.api.service.OrderService;
 import org.springframework.security.core.Authentication;
@@ -44,6 +45,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final EmailService emailService;
 
     @Override
     public OrderResponseDTO createOrder(OrderRequestDTO request) {
@@ -140,6 +142,7 @@ public class OrderServiceImpl implements OrderService {
         doc.getStatusHistory().add(history);
 
         doc = orderRepository.save(doc);
+        emailService.sendOrderConfirmation(doc);
         return ModelMapper.toOrderResponse(doc);
     }
 
@@ -209,6 +212,9 @@ public class OrderServiceImpl implements OrderService {
         doc.setUpdatedAt(Instant.now());
 
         doc = orderRepository.save(doc);
+        if (oldStatus != newStatus) {
+            emailService.sendOrderStatusUpdate(doc, oldStatus, newStatus, request.getRemarks());
+        }
         return ModelMapper.toOrderResponse(doc);
     }
 
@@ -222,6 +228,7 @@ public class OrderServiceImpl implements OrderService {
             doc.setShipment(shipment);
         }
 
+        OrderStatus oldStatus = doc.getStatus();
         if (request.getStatus() != null) {
             doc.setStatus(request.getStatus());
             shipment.setStatus(request.getStatus());
@@ -232,6 +239,9 @@ public class OrderServiceImpl implements OrderService {
 
         doc.setUpdatedAt(Instant.now());
         doc = orderRepository.save(doc);
+        if (request.getStatus() != null && request.getStatus() != oldStatus) {
+            emailService.sendOrderStatusUpdate(doc, oldStatus, request.getStatus(), request.getNotes());
+        }
         return ModelMapper.toOrderResponse(doc);
     }
 
